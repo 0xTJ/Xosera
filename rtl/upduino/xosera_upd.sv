@@ -85,8 +85,7 @@ module xosera_upd(
             output logic    gpio_46,        // video enable for HDMI
             output logic    gpio_2,         // video clock for HDMI
             output logic    spi_cs,         // FPGA SPI flash CS (keep high unless using SPI flash)
-            output logic    serial_txd,     // FPGA USB uart tx (shared with SPI flash MISO so keep CS high)
-            input  logic    serial_rxd,     // FPGA USB uart rx (shared with SPI flash SCK so keep CS high)
+            output logic    spi_miso,       // FPGA USB uart tx (shared with SPI flash MISO so keep CS high)
             input  logic    gpio_20         // input 12MHz clock (UPduino 3.0 needs OSC jumper shorted)
        );
 
@@ -119,13 +118,14 @@ assign bus_cs_n     = led_red;          // RGB red as active low select
 assign bus_rd_nwr   = led_green;        // RGB green as read/not write
 assign bus_bytesel  = led_blue;         // RGB blue for even/odd byte select
 assign bus_reg_num  = { gpio_27, gpio_26, gpio_25, gpio_23 };   // gpio for register number
-assign bus_data     = { gpio_28, gpio_38, gpio_42, gpio_36, gpio_43, gpio_34, gpio_37, gpio_31 };   // gpio for data bus
+assign bus_data     = { gpio_28, gpio_31, gpio_34, gpio_36, gpio_37, gpio_38, gpio_42, gpio_43 };   // gpio for data bus
 
 // assign audio output signals to gpio
 assign gpio_32      = audio_l;          // left audio channel gpio
 assign gpio_35      = audio_r;          // right audio channel gpio
 
-assign gpio_10      = bus_intr_r;         // interrupt signal
+assign spi_miso     = bus_intr_r;         // interrupt signal
+assign gpio_21      = 1'b1;
 
 // split tri-state data lines into in/out signals for inside FPGA
 logic bus_out_ena;
@@ -202,18 +202,8 @@ assign pclk     = gpio_20;
 SB_IO #(
     .PIN_TYPE(6'b010000)   // PIN_OUTPUT_DDR
 ) dv_clk_sbio(
-`ifdef PMOD_DIGILENT_VGA
-    //             CK*
-    .PACKAGE_PIN(gpio_2),
-`endif
-`ifdef PMOD_MUSE_VGA
-    //             CK*
-    .PACKAGE_PIN(gpio_19),
-`endif
-`ifdef PMOD_1B2_DVI12
     //             CK
     .PACKAGE_PIN(gpio_4),
-`endif
     //        .CLOCK_ENABLE(1'b1),    // ICE Technology Library recommends leaving unconnected when always enabled to save a LUT
     .OUTPUT_CLK(pclk),
     .D_OUT_0(1'b0),                   // output on rising edge
@@ -223,18 +213,8 @@ SB_IO #(
 SB_IO #(
     .PIN_TYPE(6'b010100)   // PIN_OUTPUT_REGISTERED
 ) dv_signals_sbio [14: 0](
-`ifdef PMOD_DIGILENT_VGA
-    //              DE*      VS       HS       R3       R2       R1       R0       G3       G2      G1        G0       B3       B2       B1       B0
-    .PACKAGE_PIN({gpio_46, gpio_21, gpio_12, gpio_13, gpio_11, gpio_44, gpio_48, gpio_19, gpio_9, gpio_4,   gpio_45, gpio_18, gpio_6,  gpio_3,  gpio_47}),
-`endif
-`ifdef PMOD_MUSE_VGA
-    //              DE*      VS       HS       R3       R2       R1       R0       G3       G2       G1       G0       B3       B2       B1       B0
-    .PACKAGE_PIN({gpio_9,  gpio_4,  gpio_45, gpio_18, gpio_6,  gpio_3,  gpio_47, gpio_2,  gpio_46, gpio_21, gpio_12, gpio_13, gpio_11, gpio_44, gpio_48}),
-`endif
-`ifdef PMOD_1B2_DVI12
     //              DE       VS       HS       R3       R2       R1       R0       G3       G2       G1       G0       B3       B2       B1       B0
-    .PACKAGE_PIN({gpio_46, gpio_2,  gpio_19, gpio_48, gpio_47, gpio_44, gpio_3,  gpio_11, gpio_6,  gpio_13, gpio_18, gpio_45, gpio_12, gpio_21, gpio_9}),
-`endif
+    .PACKAGE_PIN({gpio_44, gpio_46,  gpio_45, gpio_19, gpio_18, gpio_13, gpio_12,  gpio_11, gpio_10,  gpio_9, gpio_6, gpio_3, gpio_2, gpio_48, gpio_47}),
     //        .CLOCK_ENABLE(1'b1),    // ICE Technology Library recommends leaving unconnected when always enabled to save a LUT
     .OUTPUT_CLK(pclk),
     .D_OUT_0({dv_de, vga_vs, vga_hs, vga_r, vga_g, vga_b}),
@@ -244,12 +224,12 @@ SB_IO #(
 );
 `else
 // Generic VGA mode (for simulation)
-assign { gpio_46,  gpio_12,  gpio_21,  gpio_13,  gpio_19,  gpio_18,  gpio_11,  gpio_9,   gpio_6   } =
+assign { gpio_44, gpio_46,  gpio_45, gpio_19, gpio_18, gpio_13, gpio_12,  gpio_11, gpio_10 } =
        { dv_de,    vga_hs,   vga_vs,   vga_r[3], vga_g[3], vga_b[3], vga_r[2], vga_g[2], vga_b[2] };
-assign { gpio_44,  gpio_4,   gpio_3,   gpio_48,  gpio_45,  gpio_47  } =
+assign { gpio_9, gpio_6, gpio_3, gpio_2, gpio_48, gpio_47 } =
        { vga_r[1], vga_g[1], vga_b[1], vga_r[0], vga_g[0], vga_b[0] };
 
-assign gpio_2   = pclk;    // output HDMI clk
+assign gpio_4   = pclk;    // output HDMI clk
 `endif
 
 `ifdef SYNTHESIS
@@ -279,8 +259,9 @@ always_ff @(posedge pclk) begin
         reset       <= 1'b0;
     end
 end
-
+ 
 // xosera main module
+/* verilator lint_off PINMISSING */
 xosera_main xosera_main(
     .red_o(vga_r),
     .green_o(vga_g),
@@ -297,11 +278,10 @@ xosera_main xosera_main(
     .bus_data_o(bus_data_out),
     .audio_l_o(audio_l),
     .audio_r_o(audio_r),
-    .serial_txd_o(serial_txd),
-    .serial_rxd_i(serial_rxd),
     .reconfig_o(reconfig),
     .boot_select_o(boot_select),
     .reset_i(reset),
     .clk(pclk)
 );
+/* verilator lint_on PINMISSING */
 endmodule

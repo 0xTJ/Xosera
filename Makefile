@@ -64,6 +64,14 @@ xosera_dvi_640:
 	cd rtl && $(MAKE) xosera_dvi_640
 	@echo Type \"make xosera_dvi_640_prog\" to program the UPduino via USB
 
+# Build XoseRAM combined bitstream for XoseRAM board
+xoseram:
+	cd rtl && $(MAKE) xoseram
+
+# Build XoseRAM combined bitstream for XoseRAM board
+xoseram_640:
+	cd rtl && $(MAKE) xoseram_640
+
 # Build and program combo Xosera UPduino 3.x VGA FPGA bitstream for rosco_m6k board
 xosera_vga_prog: xosera_vga
 	@echo === Programming Xosera board UPduino VGA firmware ===
@@ -204,7 +212,7 @@ clean: m68kclean
 # Clean m68k tests and demos
 m68kclean:
 	cd xosera_m68k_api && $(MAKE) clean
-	cd xosera_ansiterm_m68k/ && $(MAKE) clean
+	cd xosera_ansiterm_m68k && $(MAKE) clean
 	cd xosera_audiostream_m68k && $(MAKE) clean
 	cd xosera_boing_m68k && $(MAKE) clean
 	cd xosera_font_m68k && $(MAKE) clean
@@ -212,10 +220,10 @@ m68kclean:
 	cd xosera_test_m68k && $(MAKE) clean
 	cd xosera_uart_m68k && $(MAKE) clean
 	cd xosera_vramtest_m68k && $(MAKE) clean
-	cd xosera_pointer_m68k $(MAKE) clean
+	cd xosera_pointer_m68k && $(MAKE) clean
 	cd xosera_modplay_m68k && XOSERA_M68K_API=$(XOSERA_M68K_API) $(MAKE) clean
 	cd copper/copper_test_m68k && XOSERA_M68K_API=$(XOSERA_M68K_API) $(MAKE) clean
 	cd copper/crop_test_m68k && XOSERA_M68K_API=$(XOSERA_M68K_API) $(MAKE) clean
 	cd copper/splitscreen_test_m68k && XOSERA_M68K_API=$(XOSERA_M68K_API) $(MAKE) clean
 
-.PHONY: all upduino upd upd_prog icebreaker iceb iceb_prog rtl sim isim irun vsim vrun utils m68k host_spi xvid_spi clean m68kclean
+.PHONY: all upduino xoseram xoseram_640 upd upd_prog icebreaker iceb iceb_prog rtl sim isim irun vsim vrun utils m68k host_spi xvid_spi clean m68kclean

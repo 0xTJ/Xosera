@@ -81,6 +81,17 @@ iceb_vga:
 	VIDEO_OUTPUT=PMOD_DIGILENT_VGA VIDEO_MODE=MODE_848x480 AUDIO=4 PF_B=true FPGA_CONFIG_NUM=1 $(MAKE) -f icebreaker.mk
 	@echo Type \"make iceb_prog\" to program the iCEBreaker via USB
 
+# Build Xosera XoseRAM Rev. A FPGA bitstream
+xoseram:
+	$(MAKE) -f xoseram.mk clean
+	VIDEO_MODE=MODE_640x480 AUDIO=4 FPGA_CONFIG_NUM=0 $(MAKE) -f xoseram.mk
+	VIDEO_MODE=MODE_848x480 AUDIO=4 FPGA_CONFIG_NUM=1 $(MAKE) -f xoseram.mk
+
+# Build Xosera XoseRAM Rev. A FPGA bitstream
+xoseram_640:
+	$(MAKE) -f xoseram.mk clean
+	VIDEO_MODE=MODE_640x480 AUDIO=4 FPGA_CONFIG_NUM=0 $(MAKE) -f xoseram.mk
+
 # Build and program Xosera UPduino 3.x FPGA bitstream (one config, for development)
 upd_prog:
 	VIDEO_OUTPUT=PMOD_DIGILENT_VGA VIDEO_MODE=MODE_640x480 AUDIO=4 PF_B=true $(MAKE) -f upduino.mk prog
@@ -95,4 +106,4 @@ clean:
 	$(MAKE) -f upduino.mk clean
 	$(MAKE) -f icebreaker.mk clean
 
-.PHONY: all prog def_files sim isim irun vsim vrun upd iceb xosera_board iceb_prog upd_prog xosera_prog clean
+.PHONY: all prog def_files sim isim irun vsim vrun upd iceb xosera_board xoseram xoseram_640 iceb_prog upd_prog xosera_prog clean

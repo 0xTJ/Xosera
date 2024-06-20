@@ -21,8 +21,8 @@
 //             [Xosera]       PCF  Pin#  _____  Pin#  PCF       [Xosera]
 //                                ------| USB |------
 //                          <GND> |  1   \___/   48 | spi_ssn   (16)
-//                          <VIO> |  2           47 | spi_sck   (15)
-//        [BUS_RESET_N]     <RST> |  3           46 | spi_mosi  (17)
+//                          <VIO> |  2           47 | spi_sck   (15) <also RX in>
+//        [BUS_RESET_N]     <RST> |  3           46 | spi_mosi  (17) <also TX/DTACK out>
 //                         <DONE> |  4           45 | spi_miso  (14)
 //           [BUS_CS_N]   led_red |  5           44 | gpio_20   <N/A w/OSC>
 //         [BUS_RD_NWR] led_green |  6     U     43 | gpio_10   <INTERRUPT>
@@ -97,6 +97,9 @@ logic       bus_rd_nwr;                 // bus read not write (write LOW, read H
 logic       bus_bytesel;                // bus even/odd byte select (even LOW, odd HIGH)
 logic [3:0] bus_reg_num;                // bus 4-bit register index number (16-bit registers)
 logic [7:0] bus_data;                   // bus 8-bit bidirectional data I/O
+`ifdef EN_DTACK
+logic       bus_dtack;                  // FPGA -> 68k DTACK signal
+`endif
 logic       audio_l;                    // left audio PWM
 logic       audio_r;                    // right audio PWM
 logic [3:0] vga_r;                      // vga red (4-bit)
@@ -121,7 +124,12 @@ assign bus_reg_num  = { gpio_27, gpio_26, gpio_25, gpio_23 };   // gpio for regi
 assign bus_data     = { gpio_28, gpio_31, gpio_34, gpio_36, gpio_37, gpio_38, gpio_42, gpio_43 };   // gpio for data bus
 
 // assign audio output signals to gpio
+`ifndef EN_DTACK
 assign gpio_32      = audio_l;          // left audio channel gpio
+`else
+logic unused_audio;
+assign unused_audio = &{1'b0, audio_l};
+`endif
 assign gpio_35      = audio_r;          // right audio channel gpio
 
 assign spi_miso     = bus_intr_r;         // interrupt signal
@@ -156,6 +164,10 @@ SB_IO #(
 //        timing on bus_data_out signals (but might cause issues?)
 assign bus_data     = bus_out_ena ? bus_data_out_r  : 8'bZ;
 assign bus_data_in  = bus_data;
+`endif
+
+`ifdef EN_DTACK
+assign gpio_32    = bus_dtack;
 `endif
 
 // update registered signals each clock
@@ -276,6 +288,9 @@ xosera_main xosera_main(
     .bus_bytesel_i(bus_bytesel),
     .bus_data_i(bus_data_in),
     .bus_data_o(bus_data_out),
+`ifdef EN_DTACK
+    .bus_dtack_o(bus_dtack),
+`endif
     .audio_l_o(audio_l),
     .audio_r_o(audio_r),
     .reconfig_o(reconfig),

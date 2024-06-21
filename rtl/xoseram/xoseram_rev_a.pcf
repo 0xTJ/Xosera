@@ -1,7 +1,6 @@
-# From: https://github.com/tinyvision-ai-inc/UPduino-v3.0
-
 set_io bus_cs_n 41
 set_io bus_rd_nwr 39
+set_io bus_dtack_n 32
 set_io bus_bytesel 40
 set_io bus_reg_num[3] 27
 set_io bus_reg_num[2] 26
@@ -15,7 +14,6 @@ set_io bus_data[3] 37
 set_io bus_data[2] 38
 set_io bus_data[1] 42
 set_io bus_data[0] 43
-set_io audio_l 32
 set_io audio_r 35
 set_io dv_r[3] 19
 set_io dv_r[2] 18

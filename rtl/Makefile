@@ -84,14 +84,14 @@ iceb_vga:
 # Build Xosera XoseRAM Rev. A FPGA bitstream
 xoseram:
 	$(MAKE) -f xoseram.mk clean
-	VIDEO_MODE=MODE_640x480 AUDIO=4 FPGA_CONFIG_NUM=0 $(MAKE) -f xoseram.mk
-	VIDEO_MODE=MODE_848x480 AUDIO=4 FPGA_CONFIG_NUM=1 $(MAKE) -f xoseram.mk
+	VIDEO_MODE=MODE_640x480 FPGA_CONFIG_NUM=0 $(MAKE) -f xoseram.mk
+	VIDEO_MODE=MODE_848x480 FPGA_CONFIG_NUM=1 $(MAKE) -f xoseram.mk
 	mv xosera_xoseram.bin xosera_board_xoseram.bin
 
 # Build Xosera XoseRAM Rev. A FPGA bitstream
 xoseram_640:
 	$(MAKE) -f xoseram.mk clean
-	VIDEO_MODE=MODE_640x480 AUDIO=4 FPGA_CONFIG_NUM=0 $(MAKE) -f xoseram.mk
+	VIDEO_MODE=MODE_640x480 FPGA_CONFIG_NUM=0 $(MAKE) -f xoseram.mk
 	mv xosera_xoseram.bin xosera_board_xoseram_640.bin
 
 # Build and program Xosera UPduino 3.x FPGA bitstream (one config, for development)

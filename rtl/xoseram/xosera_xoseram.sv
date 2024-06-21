@@ -15,10 +15,11 @@ module xosera_xoseram(
             // left side (USB at top)
             input  logic        bus_cs_n,        // m68k bus select (RGB red, UPduino 3.0 needs jumper R28 cut)
             input  logic        bus_rd_nwr,      // m68k bus read/not write (RGB green when output)
+            output logic        bus_dtack_n,      // m68k bus DTACK
             input  logic        bus_bytesel,       // m68k bus byte select (RGB blue when output)
             input  logic [3:0]  bus_reg_num,        // m68k bus regnum 0
             inout  logic [7:0]  bus_data,        // m68k bus regnum 1
-            output logic        audio_l,        // m68k bus regnum 2
+            // output logic        audio_l,        // m68k bus regnum 2
             output logic        audio_r,        // m68k bus regnum 3
             output logic [3:0]  dv_r,        // audio left output
             output logic [3:0]  dv_g,        // audio left output
@@ -43,6 +44,7 @@ logic       dv_hs_int;                  // vga hsync
 logic       dv_vs_int;                  // vga vsync
 logic       dv_de_int;                  // DV display enable
 logic       bus_intr;                   // interrupt signal
+logic       bus_dtack;                  // FPGA -> 68k DTACK signal
 logic       reconfig;                   // set to 1 to force reconfigure of FPGA
 logic       reconfig_r;                 // registered signal, to improve timing
 logic [1:0] boot_select;                // two bit number for flash configuration to load on reconfigure
@@ -78,6 +80,8 @@ SB_IO #(
 assign bus_data     = bus_out_ena ? bus_data_out_r  : 8'bZ;
 assign bus_data_in  = bus_data;
 `endif
+
+assign bus_dtack_n  = !bus_dtack;
 
 // update registered signals each clock
 always_ff @(posedge pclk) begin
@@ -184,7 +188,8 @@ xosera_main xosera_main(
     .bus_bytesel_i(bus_bytesel),
     .bus_data_i(bus_data_in),
     .bus_data_o(bus_data_out),
-    .audio_l_o(audio_l),
+    .bus_dtack_o(bus_dtack),
+    // .audio_l_o(audio_l),
     .audio_r_o(audio_r),
     .reconfig_o(reconfig),
     .boot_select_o(boot_select),

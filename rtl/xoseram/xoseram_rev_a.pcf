@@ -1,4 +1,4 @@
-set_io bus_cs_n 41
+set_io -pullup yes -pullup_resistor 6P8K bus_cs_n 41
 set_io bus_rd_nwr 39
 set_io bus_dtack_n 32
 set_io bus_bytesel 40
@@ -33,7 +33,7 @@ set_io dv_de 44
 set_io dv_idck 4
 set_io bus_irq_n 14
 set_io clk_12mhz 20
-set_io spi_ss_n 16
+set_io -nowarn -pullup yes -pullup_resistor 10K spi_ss_n 16
 
 # Set clock pin frequency for nextpnr-ice40 to 12MHz
 set_frequency clk_12mhz  12

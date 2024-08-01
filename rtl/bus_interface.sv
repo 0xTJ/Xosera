@@ -13,24 +13,27 @@
 
 module bus_interface(
     // bus interface signals
-    input  wire logic         bus_cs_n_i,             // register select strobe
-    input  wire logic         bus_rd_nwr_i,           // 0 = write, 1 = read
-    input  wire logic  [3:0]  bus_reg_num_i,          // register number
-    input  wire logic         bus_bytesel_i,          // 0=even byte, 1=odd byte
-    input  wire logic  [7:0]  bus_data_i,             // 8-bit data bus input (broken out from bi-dir data bus)
+    input  wire logic         bus_cs_n_i,       // register select strobe
+    input  wire logic         bus_rd_nwr_i,     // 0 = write, 1 = read
+    input  wire logic  [3:0]  bus_reg_num_i,    // register number
+    input  wire logic         bus_bytesel_i,    // 0=even byte, 1=odd byte
+    input  wire logic  [7:0]  bus_data_i,       // 8-bit data bus input (broken out from bi-dir data bus)
+    output      logic  [7:0]  bus_data_o,       // 8-bit data bus output (broken out from bi-dir data bus)
 `ifdef EN_DTACK
-    output      logic         bus_dtack_n_o,          // DTACK signal for FPGA
+    output      logic         bus_dtack_n_o,    // DTACK signal for FPGA
 `endif
     // register interface signals
-    output      logic         write_strobe_o,         // strobe for register write
-    output      logic         read_strobe_o,          // strobe for register read
-    output      logic  [3:0]  reg_num_o,              // register number read/written
-    output      logic         bytesel_o,              // byte selected of register read/written
-    output      logic  [7:0]  bytedata_o,             // byte written to register
-    // input  wire logic         ack_i,
+    output      logic         write_strobe_o,   // strobe for register write
+    output      logic         read_strobe_o,    // strobe for register read
+    output      logic  [3:0]  reg_num_o,        // register number read/written
+    output      logic         bytesel_o,        // byte selected of register read/written
+    output      logic  [7:0]  bytedata_o,       // byte written to register
+    input  wire logic  [7:0]  bytedata_i,       // byte read from register
+    input  wire logic         rd_ack_i,         // read cycle completed
+    input  wire logic         wr_ack_i,         // write cycle completed
     // standard signals
-    input  wire logic         clk,                    // input clk (should be > 2x faster than bus signals)
-    input  wire logic         reset_i                 // reset
+    input  wire logic         clk,              // input clk (should be > 2x faster than bus signals)
+    input  wire logic         reset_i           // reset
 );
 
 // input synchronizers
@@ -71,8 +74,9 @@ always_ff @(posedge clk) begin
         reg_num_o       <= 4'h0;
         bytesel_o       <= 1'b0;
         bytedata_o      <= 8'h00;
-        bus_dtack_n_o   <= xv::DTACK_NAK;       // default DTACK to NAK
-        bus_dtack_n     <= xv::DTACK_NAK;       // default DTACK to NAK
+        bus_data_o      <= 8'h00;
+        bus_dtack_n_o   <= xv::DTACK_N_NAK;     // default DTACK to NAK
+        bus_dtack_n     <= xv::DTACK_N_NAK;     // default DTACK to NAK
     end else begin
         // set outputs
         reg_num_o       <= reg_num;             // output selected register number
@@ -83,20 +87,29 @@ always_ff @(posedge clk) begin
         read_strobe_o   <= 1'b0;                // clear read strobe
 
         // if CS edge
-        if (cs_n_last == xv::CS_DISABLED && cs_n == xv::CS_ENABLED /*  && cs_n_ff1 == xv::CS_ENABLED */) begin
+        if (cs_n_last == xv::CS_DISABLED && cs_n == xv::CS_ENABLED /*  && cs_n_ff0 == xv::CS_ENABLED */) begin
             if (rd_nwr == xv::RnW_WRITE) begin
                 write_strobe_o  <= 1'b1;        // output write strobe
             end else begin
                 read_strobe_o   <= 1'b1;        // output read strobe
             end
+        end
 
-            bus_dtack_n <= xv::DTACK_ACK;       // set DTACK to ACK (FPGA has sent/received data)
+        // if ack pulse
+        if (cs_n == xv::CS_ENABLED) begin
+            if (rd_nwr == xv::RnW_WRITE && wr_ack_i) begin
+                bus_dtack_n <= xv::DTACK_N_ACK;
+            end else if (rd_nwr == xv::RnW_READ && rd_ack_i) begin
+                bus_dtack_n <= xv::DTACK_N_ACK;
+                bus_data_o <= bytedata_i;
+            end
+            
         end
 
         // clear DTACK signal if CS disabled
-        if (cs_n_ff0 == xv::CS_DISABLED) begin  // if CS not enabled
-            bus_dtack_n       <= xv::DTACK_NAK; // set DTACK to NAK
-            bus_dtack_n_o     <= xv::DTACK_NAK; // set DTACK to NAK
+        if (cs_n_ff0 == xv::CS_DISABLED) begin      // if CS not enabled
+            bus_dtack_n       <= xv::DTACK_N_NAK;   // set DTACK to NAK
+            bus_dtack_n_o     <= xv::DTACK_N_NAK;   // set DTACK to NAK
         end
 
         bus_dtack_n_o <= bus_dtack_n;

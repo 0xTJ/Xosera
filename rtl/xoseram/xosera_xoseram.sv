@@ -37,7 +37,8 @@ logic  [3:0]    bus_reg_num;            // bus register on bus
 logic           bus_write_strobe;       // strobe when a word of data written
 logic           bus_read_strobe;        // strobe when a word of data read
 logic           bus_bytesel;            // msb/lsb on bus
-byte_t          bus_data_byte;          // data byte from bus
+byte_t          bus_data_byte_write;    // data byte from bus
+byte_t          bus_data_byte_read;     // data byte to bus
 
 logic       bus_cs_n_r;
 logic       bus_rd_nwr_r;
@@ -60,25 +61,22 @@ logic [1:0] boot_select_r;              // registered signal, to improve timing
 
 // split tri-state data lines into in/out signals for inside FPGA
 logic bus_out_ena;
-logic bus_ack;
+logic bus_rd_ack;
+logic bus_wr_ack;
 logic [7:0] bus_data_out;   // bus out from Xosera
 logic [7:0] bus_data_in;    // bus input to Xosera
-logic data_clk_en;          // enable input/output data clock pulse
 
 // only set bus to output if Xosera is selected and read is selected
 assign bus_out_ena  = (bus_cs_n_r == xv::CS_ENABLED && bus_rd_nwr_r == xv::RnW_READ);
-assign data_clk_en  = (bus_cs_n_r == xv::CS_ENABLED && ((bus_rd_nwr_r == xv::RnW_READ && bus_ack) || bus_rd_nwr_r == xv::RnW_WRITE));
 
 `ifdef SYNTHESIS
 // NOTE: Use iCE40 SB_IO primitive to control tri-state properly here
 /* verilator lint_off PINMISSING */
 SB_IO #(
-    .PIN_TYPE(6'b100100)    //PIN_OUTPUT_REGISTERED_ENABLE|PIN_INPUT_REGISTERED
-) bus_data_io [7:0] (
+    .PIN_TYPE(6'b101000)    //PIN_OUTPUT_TRISTATE|PIN_INPUT_REGISTERED
+) bus_data_sb_io [7:0] (
     .PACKAGE_PIN(bus_data),
     .INPUT_CLK(pclk),
-    .OUTPUT_CLK(pclk),
-    .CLOCK_ENABLE(data_clk_en),
     .OUTPUT_ENABLE(bus_out_ena),
     .D_OUT_0(bus_data_out),
     .D_IN_0(bus_data_in)
@@ -86,7 +84,7 @@ SB_IO #(
 
 SB_IO #(
     .PIN_TYPE(6'b000000)    //PIN_NO_OUTPUT|PIN_INPUT_REGISTERED
-) bus_control_i [6:0] (
+) bus_control_sb_i [6:0] (
     .PACKAGE_PIN({ bus_cs_n, bus_rd_nwr, bus_addr }),
     .INPUT_CLK(pclk),
     .D_IN_0({ bus_cs_n_r, bus_rd_nwr_r, bus_addr_r })
@@ -98,7 +96,6 @@ SB_IO #(
 assign bus_data     = bus_out_ena ? bus_data_out  : 8'bZ;
 assign bus_data_in  = bus_data;
 // TODO: Actually replicate SB_IO function
-wire unused = { data_clk_en };  
 assign { bus_cs_n_r, bus_rd_nwr_r, bus_addr_r } = { bus_cs_n, bus_rd_nwr, bus_addr };
 `endif
 
@@ -125,18 +122,18 @@ SB_GB_IO #(
 );
 
 SB_PLL40_CORE #(
-    .DIVR(xv::PLL_DIVR),        // DIVR from video mode
-    .DIVF(xv::PLL_DIVF),        // DIVF from video mode
-    .DIVQ(xv::PLL_DIVQ),        // DIVQ from video mode
+    .DIVR(xv::PLL_DIVR),            // DIVR from video mode
+    .DIVF(xv::PLL_DIVF),            // DIVF from video mode
+    .DIVQ(xv::PLL_DIVQ),            // DIVQ from video mode
     .FEEDBACK_PATH("SIMPLE"),
     .FILTER_RANGE(3'b001),
     .PLLOUT_SELECT("GENCLK")
 ) pll_inst(
-    .LOCK(pll_lock),        // signal indicates PLL lock
+    .LOCK(pll_lock),                // signal indicates PLL lock
     .RESETB(1'b1),
     .BYPASS(1'b0),
-    .REFERENCECLK(clk_12mhz_gb), // input reference clock
-    .PLLOUTGLOBAL(pclk)     // PLL output clock (via global buffer)
+    .REFERENCECLK(clk_12mhz_gb),    // input reference clock
+    .PLLOUTGLOBAL(pclk)             // PLL output clock (via global buffer)
 );
 /* verilator lint_on PINMISSING */
 
@@ -207,6 +204,7 @@ bus_interface bus(
     .bus_reg_num_i(bus_addr_r[4:1]),    // register number
     .bus_bytesel_i(bus_addr_r[0]),      // 0=even byte, 1=odd byte
     .bus_data_i(bus_data_in),           // 8-bit data bus input
+    .bus_data_o(bus_data_out),          // 8-bit data bus output
 `ifdef EN_DTACK
     .bus_dtack_n_o(bus_dtack_n),        // strobe for 68k DTACK signal
 `endif
@@ -214,7 +212,10 @@ bus_interface bus(
     .read_strobe_o(bus_read_strobe),    // strobe for bus byte read
     .reg_num_o(bus_reg_num),            // register number from bus
     .bytesel_o(bus_bytesel),            // register number from bus
-    .bytedata_o(bus_data_byte),         // byte data from bus
+    .bytedata_o(bus_data_byte_write),   // byte data from bus
+    .bytedata_i(bus_data_byte_read),    // byte data to bus
+    .rd_ack_i(bus_rd_ack),
+    .wr_ack_i(bus_wr_ack),
     .reset_i(reset),                    // reset
     .clk(pclk)                          // input clk (should be > 2x faster than bus signals)
 );
@@ -229,9 +230,10 @@ xosera_main xosera_main(
     .bus_read_strobe_i(bus_read_strobe),    // strobe when a word of data read
     .bus_reg_num_i(bus_reg_num),            // register number
     .bus_bytesel_i(bus_bytesel),            // 0=even byte, 1=odd byte
-    .bus_data_i(bus_data_byte),             // 8-bit data bus input
-    .bus_data_o(bus_data_out),              // 8-bit data bus output
-    .bus_ack_o(bus_ack),                    // strobe for cycle done
+    .bus_data_i(bus_data_byte_write),             // 8-bit data bus input
+    .bus_data_o(bus_data_byte_read),              // 8-bit data bus output
+    .bus_rd_ack_o(bus_rd_ack),              // read bus cycle complete
+    .bus_wr_ack_o(bus_wr_ack),              // write bus cycle complete
     .red_o(dv_r_int),
     .green_o(dv_g_int),
     .blue_o(dv_b_int),

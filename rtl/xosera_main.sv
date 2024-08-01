@@ -44,7 +44,8 @@ module xosera_main(
     input  wire logic           bus_bytesel_i,      // 0=even byte, 1=odd byte
     input  wire logic [7:0]     bus_data_i,         // 8-bit data bus input
     output logic      [7:0]     bus_data_o,         // 8-bit data bus output
-    output logic                bus_ack_o,          // strobe for cycle done
+    output logic                bus_rd_ack_o,       // read bus cycle complete
+    output logic                bus_wr_ack_o,       // write bus cycle complete
     output logic                bus_intr_o,         // Xosera CPU interrupt strobe
     output logic      [3:0]     red_o,              // red color gun output
     output logic      [3:0]     green_o,            // green color gun output
@@ -207,7 +208,8 @@ reg_interface reg_interface(
     .bus_bytesel_i(bus_bytesel_i),                  // 0=even byte, 1=odd byte
     .bus_data_i(bus_data_i),                        // 8-bit data bus input
     .bus_data_o(bus_data_o),                        // 8-bit data bus output
-    .bus_ack_o(bus_ack_o),                          // strobe for cycle done
+    .bus_rd_ack_o(bus_rd_ack_o),                    // read bus cycle complete
+    .bus_wr_ack_o(bus_wr_ack_o),                    // write bus cycle complete
     // VRAM/XR
     .vram_ack_i(regs_vram_ack),                     // register interface ack (after reg read/write cycle)
     .xr_ack_i(regs_xr_ack),                         // register interface ack (after reg read/write cycle)

@@ -19,7 +19,7 @@ module bus_interface(
     input  wire logic         bus_bytesel_i,          // 0=even byte, 1=odd byte
     input  wire logic  [7:0]  bus_data_i,             // 8-bit data bus input (broken out from bi-dir data bus)
 `ifdef EN_DTACK
-    output      logic         bus_dtack_o,            // DTACK signal for FPGA
+    output      logic         bus_dtack_n_o,          // DTACK signal for FPGA
 `endif
     // register interface signals
     output      logic         write_strobe_o,         // strobe for register write
@@ -27,58 +27,40 @@ module bus_interface(
     output      logic  [3:0]  reg_num_o,              // register number read/written
     output      logic         bytesel_o,              // byte selected of register read/written
     output      logic  [7:0]  bytedata_o,             // byte written to register
+    // input  wire logic         ack_i,
     // standard signals
     input  wire logic         clk,                    // input clk (should be > 2x faster than bus signals)
     input  wire logic         reset_i                 // reset
 );
 
 // input synchronizers
-logic       cs_n_ff0;
-logic       cs_n_ff1;       // NOTE: needs extra FF, or read is too early
+logic       cs_n_ff0;       // NOTE: needs extra FF, or read is too early
 logic       cs_n;
 logic       cs_n_last;      // previous state to determine edge
-logic       rd_nwr_ff0;
 logic       rd_nwr;
-logic       bytesel_ff0;
 logic       bytesel;
-logic [3:0] reg_num_ff0;
 logic [3:0] reg_num;
-byte_t      data_ff0;
 byte_t      data;
-logic       bus_dtack;
+logic       bus_dtack_n;
 
 // async signal synchronizers
 always_ff @(posedge clk) begin
     if (reset_i) begin
         cs_n_ff0    <= 1'b0;
-        cs_n_ff1    <= 1'b0;
         cs_n        <= 1'b0;
         cs_n_last   <= 1'b0;
-        rd_nwr_ff0  <= 1'b0;
         rd_nwr      <= 1'b0;
-        bytesel_ff0 <= 1'b0;
         bytesel     <= 1'b0;
-        reg_num_ff0 <= 4'b0;
         reg_num     <= 4'b0;
-        data_ff0    <= 8'b0;
         data        <= 8'b0;
     end else begin
         cs_n_ff0    <= bus_cs_n_i;
-        cs_n_ff1    <= cs_n_ff0;
-        cs_n        <= cs_n_ff1;
+        cs_n        <= cs_n_ff0;
         cs_n_last   <= cs_n;
-
-        rd_nwr_ff0  <= bus_rd_nwr_i;
-        rd_nwr      <= rd_nwr_ff0;
-
-        bytesel_ff0 <= bus_bytesel_i;
-        bytesel     <= bytesel_ff0;
-
-        reg_num_ff0 <= bus_reg_num_i;
-        reg_num     <= reg_num_ff0;
-
-        data_ff0    <= bus_data_i;
-        data        <= data_ff0;
+        rd_nwr      <= bus_rd_nwr_i;
+        bytesel     <= bus_bytesel_i;
+        reg_num     <= bus_reg_num_i;
+        data        <= bus_data_i;
     end
 end
 
@@ -89,8 +71,8 @@ always_ff @(posedge clk) begin
         reg_num_o       <= 4'h0;
         bytesel_o       <= 1'b0;
         bytedata_o      <= 8'h00;
-        bus_dtack_o     <= xv::DTACK_NAK;       // default DTACK to NAK
-        bus_dtack       <= xv::DTACK_NAK;       // default DTACK to NAK
+        bus_dtack_n_o   <= xv::DTACK_NAK;       // default DTACK to NAK
+        bus_dtack_n     <= xv::DTACK_NAK;       // default DTACK to NAK
     end else begin
         // set outputs
         reg_num_o       <= reg_num;             // output selected register number
@@ -108,16 +90,16 @@ always_ff @(posedge clk) begin
                 read_strobe_o   <= 1'b1;        // output read strobe
             end
 
-            bus_dtack <= xv::DTACK_ACK;       // set DTACK to ACK (FPGA has sent/received data)
+            bus_dtack_n <= xv::DTACK_ACK;       // set DTACK to ACK (FPGA has sent/received data)
         end
 
         // clear DTACK signal if CS disabled
-        if (cs_n_ff0 == xv::CS_DISABLED) begin      // if CS not enabled
-            bus_dtack       <= xv::DTACK_NAK;       // set DTACK to NAK
-            bus_dtack_o     <= xv::DTACK_NAK;       // set DTACK to NAK
+        if (cs_n_ff0 == xv::CS_DISABLED) begin  // if CS not enabled
+            bus_dtack_n       <= xv::DTACK_NAK; // set DTACK to NAK
+            bus_dtack_n_o     <= xv::DTACK_NAK; // set DTACK to NAK
         end
 
-        bus_dtack_o <=  bus_dtack;
+        bus_dtack_n_o <= bus_dtack_n;
     end
 end
 

@@ -111,7 +111,7 @@ assign mem_wait    = regs_wr_o | xr_rd | vram_rd;
 intr_t intr_mask;
 assign intr_mask_o = intr_mask;
 
-assign bus_ack_o = (bus_write_strobe_i | bus_read_strobe_i);
+assign bus_ack_o = 1'b1;
 
 `ifdef EN_UART
 acia #(

@@ -39,6 +39,10 @@ logic           bus_read_strobe;        // strobe when a word of data read
 logic           bus_bytesel;            // msb/lsb on bus
 byte_t          bus_data_byte;          // data byte from bus
 
+logic       bus_cs_n_r;
+logic       bus_rd_nwr_r;
+logic [4:0] bus_addr_r;
+
 // gpio pin aliases
 /* verilator lint_off UNDRIVEN */
 logic [3:0] dv_r_int;                   // vga red (4-bit)
@@ -48,7 +52,6 @@ logic       dv_hs_int;                  // vga hsync
 logic       dv_vs_int;                  // vga vsync
 logic       dv_de_int;                  // DV display enable
 logic       bus_intr;                   // interrupt signal
-logic       bus_dtack;                  // FPGA -> 68k DTACK signal
 logic       reconfig;                   // set to 1 to force reconfigure of FPGA
 logic       reconfig_r;                 // registered signal, to improve timing
 logic [1:0] boot_select;                // two bit number for flash configuration to load on reconfigure
@@ -57,40 +60,51 @@ logic [1:0] boot_select_r;              // registered signal, to improve timing
 
 // split tri-state data lines into in/out signals for inside FPGA
 logic bus_out_ena;
-logic [7:0] bus_data_out;               // bus out from Xosera
-logic [7:0] bus_data_out_r;             // registered bus_data_out signal (experimental)
-logic [7:0] bus_data_in;                // bus input to Xosera
+logic bus_ack;
+logic [7:0] bus_data_out;   // bus out from Xosera
+logic [7:0] bus_data_in;    // bus input to Xosera
+logic data_clk_en;          // enable input/output data clock pulse
 
 // only set bus to output if Xosera is selected and read is selected
-assign bus_out_ena  = (bus_cs_n == xv::CS_ENABLED && bus_rd_nwr == xv::RnW_READ);
+assign bus_out_ena  = (bus_cs_n_r == xv::CS_ENABLED && bus_rd_nwr_r == xv::RnW_READ);
+assign data_clk_en  = (bus_cs_n_r == xv::CS_ENABLED && ((bus_rd_nwr_r == xv::RnW_READ && bus_ack) || bus_rd_nwr_r == xv::RnW_WRITE));
 
 `ifdef SYNTHESIS
 // NOTE: Use iCE40 SB_IO primitive to control tri-state properly here
 /* verilator lint_off PINMISSING */
 SB_IO #(
-    .PIN_TYPE(6'b101001)    //PIN_OUTPUT_TRISTATE|PIN_INPUT
-) bus_tristate [7:0] (
+    .PIN_TYPE(6'b100100)    //PIN_OUTPUT_REGISTERED_ENABLE|PIN_INPUT_REGISTERED
+) bus_data_io [7:0] (
     .PACKAGE_PIN(bus_data),
     .INPUT_CLK(pclk),
     .OUTPUT_CLK(pclk),
+    .CLOCK_ENABLE(data_clk_en),
     .OUTPUT_ENABLE(bus_out_ena),
-    .D_OUT_0(bus_data_out_r),
+    .D_OUT_0(bus_data_out),
     .D_IN_0(bus_data_in)
+);
+
+SB_IO #(
+    .PIN_TYPE(6'b000000)    //PIN_NO_OUTPUT|PIN_INPUT_REGISTERED
+) bus_control_i [6:0] (
+    .PACKAGE_PIN({ bus_cs_n, bus_rd_nwr, bus_addr }),
+    .INPUT_CLK(pclk),
+    .D_IN_0({ bus_cs_n_r, bus_rd_nwr_r, bus_addr_r })
 );
 /* verilator lint_on PINMISSING */
 `else
 // NOTE: Using the registered ("_r") signal may be a win for <posedge pclk> -> async
 //        timing on bus_data_out signals (but might cause issues?)
-assign bus_data     = bus_out_ena ? bus_data_out_r  : 8'bZ;
+assign bus_data     = bus_out_ena ? bus_data_out  : 8'bZ;
 assign bus_data_in  = bus_data;
+// TODO: Actually replicate SB_IO function
+wire unused = { data_clk_en };  
+assign { bus_cs_n_r, bus_rd_nwr_r, bus_addr_r } = { bus_cs_n, bus_rd_nwr, bus_addr };
 `endif
-
-assign bus_dtack_n  = !bus_dtack;
 
 // update registered signals each clock
 always_ff @(posedge pclk) begin
-    bus_data_out_r  <= bus_data_out;
-    bus_irq_n       <= bus_intr;
+    bus_irq_n       <= bus_intr;    // TODO: Check polarity
     reconfig_r      <= reconfig;
     boot_select_r   <= boot_select;
 end
@@ -98,9 +112,18 @@ end
 // PLL to derive proper video frequency from 12MHz oscillator (gpio_20 with OSC jumper shorted)
 logic pclk;                  // video pixel clock output from PLL block
 logic pll_lock;              // indicates when PLL frequency has locked-on
+logic clk_12mhz_gb;
 
 `ifdef SYNTHESIS
 /* verilator lint_off PINMISSING */
+// Using PIN_INPUT_REGISTERED because the GLOBAL_BUFFER_OUTPUT tap is before the flip-flop
+SB_GB_IO #(
+    .PIN_TYPE(6'b000000)    //PIN_NO_OUTPUT|PIN_INPUT_REGISTERED
+) bus_clk_gb_i (
+    .PACKAGE_PIN(clk_12mhz),
+    .GLOBAL_BUFFER_OUTPUT(clk_12mhz_gb)
+);
+
 SB_PLL40_CORE #(
     .DIVR(xv::PLL_DIVR),        // DIVR from video mode
     .DIVF(xv::PLL_DIVF),        // DIVF from video mode
@@ -112,7 +135,7 @@ SB_PLL40_CORE #(
     .LOCK(pll_lock),        // signal indicates PLL lock
     .RESETB(1'b1),
     .BYPASS(1'b0),
-    .REFERENCECLK(clk_12mhz), // input reference clock
+    .REFERENCECLK(clk_12mhz_gb), // input reference clock
     .PLLOUTGLOBAL(pclk)     // PLL output clock (via global buffer)
 );
 /* verilator lint_on PINMISSING */
@@ -120,7 +143,8 @@ SB_PLL40_CORE #(
 `else
 // for simulation use 1:1 input clock (and testbench can simulate proper frequency)
 assign pll_lock = 1'b1;
-assign pclk     = clk_12mhz;
+assign clk_12mhz_gb = clk_12mhz;
+assign pclk     = clk_12mhz_gb;
 `endif
 
 // video output signals
@@ -178,13 +202,13 @@ end
 
 // bus_interface handles signal synchronization, CS and register writes to Xosera
 bus_interface bus(
-    .bus_cs_n_i(bus_cs_n),              // register select strobe
-    .bus_rd_nwr_i(bus_rd_nwr),          // 0=write, 1=read
-    .bus_reg_num_i(bus_addr[4:1]),      // register number
-    .bus_bytesel_i(bus_addr[0]),        // 0=even byte, 1=odd byte
+    .bus_cs_n_i(bus_cs_n_r),            // register select strobe
+    .bus_rd_nwr_i(bus_rd_nwr_r),        // 0=write, 1=read
+    .bus_reg_num_i(bus_addr_r[4:1]),    // register number
+    .bus_bytesel_i(bus_addr_r[0]),      // 0=even byte, 1=odd byte
     .bus_data_i(bus_data_in),           // 8-bit data bus input
 `ifdef EN_DTACK
-    .bus_dtack_o(bus_dtack),            // strobe for 68k DTACK signal
+    .bus_dtack_n_o(bus_dtack_n),        // strobe for 68k DTACK signal
 `endif
     .write_strobe_o(bus_write_strobe),  // strobe for bus byte write
     .read_strobe_o(bus_read_strobe),    // strobe for bus byte read
@@ -207,7 +231,7 @@ xosera_main xosera_main(
     .bus_bytesel_i(bus_bytesel),            // 0=even byte, 1=odd byte
     .bus_data_i(bus_data_byte),             // 8-bit data bus input
     .bus_data_o(bus_data_out),              // 8-bit data bus output
-    // .bus_ack_o(bus_ack_o),                  // strobe for cycle done
+    .bus_ack_o(bus_ack),                    // strobe for cycle done
     .red_o(dv_r_int),
     .green_o(dv_g_int),
     .blue_o(dv_b_int),

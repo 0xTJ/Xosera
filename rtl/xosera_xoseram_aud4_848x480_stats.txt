@@ -1,12 +1,12 @@
 === XoseRAM Xosera: MODE_848x480
--- Running command `verilog_defines -DNO_ICE40_DEFAULT_ASSIGNMENTS -DGITCLEAN=0 -DGITHASH=c35c95c -DBUILDDATE=20240621 -DFPGA_CONFIG_NUM=1 -DMODE_848x480 -DEN_AUDIO=4 -DICE40UP5K -DXOSERAM ; read_verilog -I. -sv xoseram/xosera_xoseram.sv ./acia_rx.sv ./acia.sv ./acia_tx.sv ./audio_dac.sv ./audio_mem.sv ./audio_mixer_slim.sv ./blitter_slim.sv ./bus_interface.sv ./colormem.sv ./coppermem.sv ./copper_slim.sv ./pointermem.sv ./reg_interface.sv ./spi_target.sv ./tilemem.sv ./video_blend_2bit.sv ./video_blend_4bit.sv ./video_gen.sv ./video_playfield.sv ./video_timing.sv ./vram_arb.sv ./vram.sv ./xosera_main.sv ./xosera_pkg.sv ./xrmem_arb.sv  ; synth_ice40 -device u -no-rw-check -dff -top xosera_xoseram -json xoseram/xosera_xoseram_aud4_848x480.json' --
-   XOSERA xosera_info:    Xosera v0.40 20240621 >#0C35C95C iCE40UP5K 128KB COPP BLIT PIXA PNTR DTAK AUD4
+-- Running command `verilog_defines -DNO_ICE40_DEFAULT_ASSIGNMENTS -DGITCLEAN=0 -DGITHASH=deab232 -DBUILDDATE=20240801 -DFPGA_CONFIG_NUM=1 -DMODE_848x480 -DEN_AUDIO=4 -DICE40UP5K -DXOSERAM ; read_verilog -I. -sv xoseram/xosera_xoseram.sv ./acia_rx.sv ./acia.sv ./acia_tx.sv ./audio_dac.sv ./audio_mem.sv ./audio_mixer_slim.sv ./blitter_slim.sv ./bus_interface.sv ./colormem.sv ./coppermem.sv ./copper_slim.sv ./pointermem.sv ./reg_interface.sv ./spi_target.sv ./tilemem.sv ./video_blend_2bit.sv ./video_blend_4bit.sv ./video_gen.sv ./video_playfield.sv ./video_timing.sv ./vram_arb.sv ./vram.sv ./xosera_main.sv ./xosera_pkg.sv ./xrmem_arb.sv  ; synth_ice40 -device u -no-rw-check -dff -top xosera_xoseram -json xoseram/xosera_xoseram_aud4_848x480.json' --
+   XOSERA xosera_info:    Xosera v0.40 20240801 >#0DEAB232 iCE40UP5K 128KB COPP BLIT PIXA PNTR DTAK AUD4
    XOSERA configuration:  MODE_848x480@60 COPP BLIT PIXA PNTR AUD4 
 Package: oss-cad-suite-linux-x64-20240518
 Yosys 0.41+83 (git sha1 7045cf509, clang++ 14.0.0-1ubuntu1.1 -fPIC -Os)
 "nextpnr-ice40" -- Next Generation Place and Route (Version nextpnr-0.7-39-gb7f91e57)
 Info: Device utilisation:
-Info: 	         ICESTORM_LC:    3827/   5280    72%
+Info: 	         ICESTORM_LC:    3837/   5280    72%
 Info: 	        ICESTORM_RAM:      29/     30    96%
 Info: 	               SB_IO:      36/     96    37%
 Info: 	               SB_GB:       8/      8   100%
@@ -22,4 +22,4 @@ Info: 	         SB_LEDDA_IP:       0/      1     0%
 Info: 	         SB_RGBA_DRV:       0/      1     0%
 Info: 	      ICESTORM_SPRAM:       4/      4   100%
 
-Info: Max frequency for clock 'pclk': 38.18 MHz (PASS at 33.77 MHz)
+Info: Max frequency for clock 'pclk': 38.26 MHz (PASS at 33.77 MHz)

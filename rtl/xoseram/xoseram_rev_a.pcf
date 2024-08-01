@@ -1,11 +1,11 @@
 set_io -pullup yes -pullup_resistor 6P8K bus_cs_n 41
 set_io bus_rd_nwr 39
 set_io bus_dtack_n 32
-set_io bus_bytesel 40
-set_io bus_reg_num[3] 27
-set_io bus_reg_num[2] 26
-set_io bus_reg_num[1] 25
-set_io bus_reg_num[0] 23
+set_io bus_addr[4] 27
+set_io bus_addr[3] 26
+set_io bus_addr[2] 25
+set_io bus_addr[1] 23
+set_io bus_addr[0] 40
 set_io bus_data[7] 28
 set_io bus_data[6] 31
 set_io bus_data[5] 34

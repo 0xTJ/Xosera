@@ -17,15 +17,14 @@
 
 module reg_interface (
     // bus interface signals
-    input  wire logic           bus_cs_n_i,        // register select strobe
-    input  wire logic           bus_rd_nwr_i,      // 0 = write, 1 = read
-    input  wire logic  [3:0]    bus_reg_num_i,     // register number
-    input  wire logic           bus_bytesel_i,     // 0=even byte, 1=odd byte
-    input  wire logic  [7:0]    bus_data_i,        // 8-bit data bus input
-    output      logic  [7:0]    bus_data_o,        // 8-bit data bus output
-`ifdef EN_DTACK
-    output      logic           bus_dtack_o,       // strobe for 68k DTACK signal
-`endif
+    input  wire logic           bus_write_strobe_i, // strobe when a word of data written
+    input  wire logic           bus_read_strobe_i,  // strobe when a word of data read
+    input  wire logic  [3:0]    bus_reg_num_i,      // register number
+    input  wire logic           bus_bytesel_i,      // 0=even byte, 1=odd byte
+    input  wire logic  [7:0]    bus_data_i,         // 8-bit data bus input
+    output      logic  [7:0]    bus_data_o,         // 8-bit data bus output
+    output      logic           bus_ack_o,          // Bus cycle complete
+
     // VRAM/XR access signals
     input  wire logic           vram_ack_i,        // VRAM access ack (true when data read/written)
     input  wire logic           xr_ack_i,          // XR bus access ack (true when data read/written)
@@ -58,9 +57,6 @@ module reg_interface (
 `ifndef EN_UART_TX
     input wire  logic           uart_rxd_i,        // UART transmit signal
 `endif
-`endif
-`ifdef BUS_DEBUG_SIGNALS
-    output      logic           bus_ack_o,         // ACK strobe for bus debug
 `endif
     input  wire logic           reset_i,           // reset signal
     input  wire logic           clk                // pixel clock
@@ -104,12 +100,6 @@ logic           wr_incr_flag;
 logic           xrd_incr_flag;
 logic           xwr_incr_flag;
 
-logic  [3:0]    bus_reg_num;            // bus register on bus
-logic           bus_write_strobe;       // strobe when a word of data written
-logic           bus_read_strobe;        // strobe when a word of data read
-logic           bus_bytesel;            // msb/lsb on bus
-byte_t          bus_data_byte;          // data byte from bus
-
 byte_t          timer_latch_val;        // low byte of timer (latched on high byte read)
 byte_t          reg_xdata_even;         // byte written to even byte of XR_XDATA
 byte_t          reg_data_even;          // byte written to even byte of XM_DATA/XM_DATA_2
@@ -121,28 +111,7 @@ assign mem_wait    = regs_wr_o | xr_rd | vram_rd;
 intr_t intr_mask;
 assign intr_mask_o = intr_mask;
 
-`ifdef BUS_DEBUG_SIGNALS    // debug "ack" bus strobe
-assign bus_ack_o = (bus_write_strobe | bus_read_strobe);
-`endif
-
-// bus_interface handles signal synchronization, CS and register writes to Xosera
-bus_interface bus(
-    .bus_cs_n_i(bus_cs_n_i),              // register select strobe
-    .bus_rd_nwr_i(bus_rd_nwr_i),          // 0=write, 1=read
-    .bus_reg_num_i(bus_reg_num_i),        // register number
-    .bus_bytesel_i(bus_bytesel_i),        // 0=even byte, 1=odd byte
-    .bus_data_i(bus_data_i),              // 8-bit data bus input
-`ifdef EN_DTACK
-    .bus_dtack_o(bus_dtack_o),            // strobe for 68k DTACK signal
-`endif
-    .write_strobe_o(bus_write_strobe),    // strobe for bus byte write
-    .read_strobe_o(bus_read_strobe),      // strobe for bus byte read
-    .reg_num_o(bus_reg_num),              // register number from bus
-    .bytesel_o(bus_bytesel),              // register number from bus
-    .bytedata_o(bus_data_byte),           // byte data from bus
-    .reset_i(reset_i),                     // reset
-    .clk(clk)                             // input clk (should be > 2x faster than bus signals)
-);
+assign bus_ack_o = (bus_write_strobe_i | bus_read_strobe_i);
 
 `ifdef EN_UART
 acia #(
@@ -153,7 +122,7 @@ acia #(
     .rd_i(uart_rd),
 `endif
     .wr_i(uart_wr),
-    .rs_i(bus_bytesel),
+    .rs_i(bus_bytesel_i),
 `ifndef EN_UART_TX
     .rx_i(uart_rxd_i),
 `endif
@@ -229,17 +198,17 @@ end
 
 // continuously output byte selected for read from Xosera (to be put on bus when selected for read)
 word_t      rd_temp_word;
-always_comb bus_data_o  = !bus_bytesel ? rd_temp_word[15:8] : rd_temp_word[7:0];
+always_comb bus_data_o  = !bus_bytesel_i ? rd_temp_word[15:8] : rd_temp_word[7:0];
 
 `ifdef EN_UART
 `ifndef EN_UART_TX
-always_comb uart_rd    = bus_read_strobe && (bus_reg_num == xv::XM_UART);
+always_comb uart_rd    = bus_read_strobe && (bus_reg_num_i == xv::XM_UART);
 `endif
 `endif
 
 // xm registers read
 always_comb begin
-    case (bus_reg_num)
+    case (bus_reg_num_i)
         xv::XM_SYS_CTRL:
             rd_temp_word  = { mem_wait,
 `ifdef EN_BLIT
@@ -435,115 +404,115 @@ always_ff @(posedge clk) begin
         end
 
         // register write
-        if (bus_write_strobe) begin
-            case (bus_reg_num)
+        if (bus_write_strobe_i) begin
+            case (bus_reg_num_i)
                 xv::XM_SYS_CTRL: begin
-                    if (!bus_bytesel) begin
+                    if (!bus_bytesel_i) begin
 `ifdef EN_PIXEL_ADDR
-                        pixel_bpp   <=  bus_data_byte[1:0];
+                        pixel_bpp   <=  bus_data_i[1:0];
                         pixel_base  <=  reg_pixel_x;
                         pixel_width <=  reg_pixel_y;
 `endif
                     end else begin
-                        regs_wrmask_o       <= bus_data_byte[3:0];
+                        regs_wrmask_o       <= bus_data_i[3:0];
                     end
                 end
                 xv::XM_INT_CTRL: begin
-                    if (!bus_bytesel) begin
-                        reconfig_o          <= bus_data_byte[7];
-                        intr_mask           <= bus_data_byte[6:0];
+                    if (!bus_bytesel_i) begin
+                        reconfig_o          <= bus_data_i[7];
+                        intr_mask           <= bus_data_i[6:0];
                     end else begin
-                        intr_clear_o        <= bus_data_byte[6:0];
+                        intr_clear_o        <= bus_data_i[6:0];
                     end
                 end
                 xv::XM_TIMER: begin
 `ifdef EN_TIMER_INTR
-                    reg_timer_interval      <= bus_data_byte;
+                    reg_timer_interval      <= bus_data_i;
 `endif
                 end
                 xv::XM_RD_XADDR: begin
-                    if (!bus_bytesel) begin
-                        reg_rd_xaddr[15:8]  <= bus_data_byte;
+                    if (!bus_bytesel_i) begin
+                        reg_rd_xaddr[15:8]  <= bus_data_i;
                     end else begin
-                        reg_rd_xaddr[7:0]   <= bus_data_byte;
+                        reg_rd_xaddr[7:0]   <= bus_data_i;
                         regs_xr_sel_o       <= 1'b1;            // select XR
                         xr_rd               <= 1'b1;            // remember pending XR read request
-                        regs_addr_o         <= { reg_rd_xaddr[15:8], bus_data_byte };    // output read addr (pre-read)
+                        regs_addr_o         <= { reg_rd_xaddr[15:8], bus_data_i };    // output read addr (pre-read)
                     end
                 end
                 xv::XM_WR_XADDR: begin
-                    if (!bus_bytesel) begin
-                        reg_wr_xaddr[15:8]  <= bus_data_byte;
+                    if (!bus_bytesel_i) begin
+                        reg_wr_xaddr[15:8]  <= bus_data_i;
                     end else begin
-                        reg_wr_xaddr[7:0]   <= bus_data_byte;
+                        reg_wr_xaddr[7:0]   <= bus_data_i;
                     end
                 end
                 xv::XM_XDATA: begin
-                    if (!bus_bytesel) begin
-                        reg_xdata_even      <= bus_data_byte;   // data xr reg even byte storage
+                    if (!bus_bytesel_i) begin
+                        reg_xdata_even      <= bus_data_i;   // data xr reg even byte storage
                     end else begin
                         regs_xr_sel_o       <= 1'b1;            // select XR
                         regs_wr_o           <= 1'b1;
                         regs_addr_o         <= reg_wr_xaddr;
-                        regs_data_o         <= { reg_xdata_even, bus_data_byte };     // output write addr
+                        regs_data_o         <= { reg_xdata_even, bus_data_i };     // output write addr
                     end
                 end
                 xv::XM_RD_INCR: begin
-                    if (!bus_bytesel) begin
-                        reg_rd_incr[15:8]   <= bus_data_byte;
+                    if (!bus_bytesel_i) begin
+                        reg_rd_incr[15:8]   <= bus_data_i;
                     end else begin
-                        reg_rd_incr[7:0]    <= bus_data_byte;
+                        reg_rd_incr[7:0]    <= bus_data_i;
                     end
                 end
                 xv::XM_RD_ADDR: begin
-                    if (!bus_bytesel) begin
-                        reg_rd_addr[15:8]   <= bus_data_byte;
+                    if (!bus_bytesel_i) begin
+                        reg_rd_addr[15:8]   <= bus_data_i;
                     end else begin
-                        reg_rd_addr[7:0]    <= bus_data_byte;
+                        reg_rd_addr[7:0]    <= bus_data_i;
                         regs_vram_sel_o     <= 1'b1;            // select VRAM
                         vram_rd             <= 1'b1;            // remember pending VRAM read request
-                        regs_addr_o         <= { reg_rd_addr[15:8], bus_data_byte };      // output read address
+                        regs_addr_o         <= { reg_rd_addr[15:8], bus_data_i };      // output read address
                     end
                 end
                 xv::XM_WR_INCR: begin
-                    if (!bus_bytesel) begin
-                        reg_wr_incr[15:8]   <= bus_data_byte;
+                    if (!bus_bytesel_i) begin
+                        reg_wr_incr[15:8]   <= bus_data_i;
                     end else begin
-                        reg_wr_incr[7:0]    <= bus_data_byte;
+                        reg_wr_incr[7:0]    <= bus_data_i;
                     end
                 end
                 xv::XM_WR_ADDR: begin
-                    if (!bus_bytesel) begin
-                        reg_wr_addr[15:8]   <= bus_data_byte;
+                    if (!bus_bytesel_i) begin
+                        reg_wr_addr[15:8]   <= bus_data_i;
                     end else begin
-                        reg_wr_addr[7:0]    <= bus_data_byte;
+                        reg_wr_addr[7:0]    <= bus_data_i;
                     end
                 end
                 xv::XM_DATA,
                 xv::XM_DATA_2: begin
-                    if (!bus_bytesel) begin
-                        reg_data_even       <= bus_data_byte;   // data reg even byte storage
+                    if (!bus_bytesel_i) begin
+                        reg_data_even       <= bus_data_i;   // data reg even byte storage
                     end else begin
                         regs_vram_sel_o     <= 1'b1;            // select VRAM
                         regs_wr_o           <= 1'b1;            // write
                         regs_addr_o         <= reg_wr_addr;    // output write address
-                        regs_data_o         <= { reg_data_even, bus_data_byte };      // output write data
+                        regs_data_o         <= { reg_data_even, bus_data_i };      // output write data
                     end
                 end
 `ifdef EN_PIXEL_ADDR
                 xv::XM_PIXEL_X: begin
-                        if (!bus_bytesel) begin
-                        reg_pixel_x[15:8]   <= bus_data_byte;
+                        if (!bus_bytesel_i) begin
+                        reg_pixel_x[15:8]   <= bus_data_i;
                     end else begin
-                        reg_pixel_x[7:0]    <= bus_data_byte;
+                        reg_pixel_x[7:0]    <= bus_data_i;
                         pixel_strobe        <= 1'b1;
                     end
                 end
                 xv::XM_PIXEL_Y: begin
-                    if (!bus_bytesel) begin
-                        reg_pixel_y[15:8]   <= bus_data_byte;
+                    if (!bus_bytesel_i) begin
+                        reg_pixel_y[15:8]   <= bus_data_i;
                     end else begin
-                        reg_pixel_y[7:0]    <= bus_data_byte;
+                        reg_pixel_y[7:0]    <= bus_data_i;
                         pixel_strobe        <= 1'b1;
                     end
                 end
@@ -551,10 +520,10 @@ always_ff @(posedge clk) begin
 
 `ifdef EN_UART
                 xv::XM_UART: begin
-                    if (!bus_bytesel) begin
+                    if (!bus_bytesel_i) begin
                     end else begin
                         uart_wr     <= 1'b1;
-                        uart_din    <= bus_data_byte;
+                        uart_din    <= bus_data_i;
                     end
                 end
 `endif
@@ -565,15 +534,15 @@ always_ff @(posedge clk) begin
         end
 
         // if data read, start next pre-read
-        if (bus_read_strobe && bus_bytesel) begin
+        if (bus_read_strobe_i && bus_bytesel_i) begin
             // if read from xdata then pre-read next xr rd address
-            if (bus_reg_num == xv::XM_XDATA) begin
+            if (bus_reg_num_i == xv::XM_XDATA) begin
                 regs_addr_o         <= reg_rd_xaddr;    // output read address
                 regs_xr_sel_o       <= 1'b1;            // select XR
                 xr_rd               <= 1'b1;            // remember pending vram read request
             end
             // if read from data then pre-read next vram rd address
-            if (bus_reg_num == xv::XM_DATA || bus_reg_num == xv::XM_DATA_2) begin
+            if (bus_reg_num_i == xv::XM_DATA || bus_reg_num_i == xv::XM_DATA_2) begin
                 regs_addr_o         <= reg_rd_addr;     // output read address
                 regs_vram_sel_o     <= 1'b1;            // select VRAM
                 vram_rd             <= 1'b1;            // remember pending vram read request
@@ -590,7 +559,7 @@ always_ff @(posedge clk) begin
 `endif
 
         // latch low byte of timer when upper byte read
-        if (bus_read_strobe && !bus_bytesel) begin
+        if (bus_read_strobe_i && !bus_bytesel_i) begin
             timer_latch_val <= reg_timer[7:0];
         end
     end

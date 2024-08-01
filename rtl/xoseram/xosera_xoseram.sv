@@ -16,8 +16,7 @@ module xosera_xoseram(
             input  logic        bus_cs_n,        // m68k bus select (RGB red, UPduino 3.0 needs jumper R28 cut)
             input  logic        bus_rd_nwr,      // m68k bus read/not write (RGB green when output)
             output logic        bus_dtack_n,      // m68k bus DTACK
-            input  logic        bus_bytesel,       // m68k bus byte select (RGB blue when output)
-            input  logic [3:0]  bus_reg_num,        // m68k bus regnum 0
+            input  logic [4:0]  bus_addr,        // m68k bus regnum 0
             inout  logic [7:0]  bus_data,        // m68k bus regnum 1
             output logic        audio_r,        // m68k bus regnum 3
             output logic [3:0]  dv_r,        // audio left output
@@ -33,6 +32,12 @@ module xosera_xoseram(
        );
 
 assign spi_ss_n = 1'b1;                   // prevent SPI flash interfering with other SPI/FTDI pins
+
+logic  [3:0]    bus_reg_num;            // bus register on bus
+logic           bus_write_strobe;       // strobe when a word of data written
+logic           bus_read_strobe;        // strobe when a word of data read
+logic           bus_bytesel;            // msb/lsb on bus
+byte_t          bus_data_byte;          // data byte from bus
 
 // gpio pin aliases
 /* verilator lint_off UNDRIVEN */
@@ -170,10 +175,39 @@ always_ff @(posedge pclk) begin
         reset       <= 1'b0;
     end
 end
- 
+
+// bus_interface handles signal synchronization, CS and register writes to Xosera
+bus_interface bus(
+    .bus_cs_n_i(bus_cs_n),              // register select strobe
+    .bus_rd_nwr_i(bus_rd_nwr),          // 0=write, 1=read
+    .bus_reg_num_i(bus_addr[4:1]),      // register number
+    .bus_bytesel_i(bus_addr[0]),        // 0=even byte, 1=odd byte
+    .bus_data_i(bus_data_in),           // 8-bit data bus input
+`ifdef EN_DTACK
+    .bus_dtack_o(bus_dtack),            // strobe for 68k DTACK signal
+`endif
+    .write_strobe_o(bus_write_strobe),  // strobe for bus byte write
+    .read_strobe_o(bus_read_strobe),    // strobe for bus byte read
+    .reg_num_o(bus_reg_num),            // register number from bus
+    .bytesel_o(bus_bytesel),            // register number from bus
+    .bytedata_o(bus_data_byte),         // byte data from bus
+    .reset_i(reset),                    // reset
+    .clk(pclk)                          // input clk (should be > 2x faster than bus signals)
+);
+
+// always_comb bus_write_l_strobe = bus_write_strobe & bus_bytesel;
+// always_comb bus_write_h_strobe = bus_write_strobe & !bus_bytesel;
+
 // xosera main module
 /* verilator lint_off PINMISSING */
 xosera_main xosera_main(
+    .bus_write_strobe_i(bus_write_strobe),  // strobe when a word of data written
+    .bus_read_strobe_i(bus_read_strobe),    // strobe when a word of data read
+    .bus_reg_num_i(bus_reg_num),            // register number
+    .bus_bytesel_i(bus_bytesel),            // 0=even byte, 1=odd byte
+    .bus_data_i(bus_data_byte),             // 8-bit data bus input
+    .bus_data_o(bus_data_out),              // 8-bit data bus output
+    // .bus_ack_o(bus_ack_o),                  // strobe for cycle done
     .red_o(dv_r_int),
     .green_o(dv_g_int),
     .blue_o(dv_b_int),
@@ -181,13 +215,6 @@ xosera_main xosera_main(
     .vsync_o(dv_vs_int),
     .hsync_o(dv_hs_int),
     .dv_de_o(dv_de_int),
-    .bus_cs_n_i(bus_cs_n),
-    .bus_rd_nwr_i(bus_rd_nwr),
-    .bus_reg_num_i(bus_reg_num),
-    .bus_bytesel_i(bus_bytesel),
-    .bus_data_i(bus_data_in),
-    .bus_data_o(bus_data_out),
-    .bus_dtack_o(bus_dtack),
     .audio_r_o(audio_r),
     .reconfig_o(reconfig),
     .boot_select_o(boot_select),

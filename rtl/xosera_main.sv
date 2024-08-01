@@ -38,15 +38,13 @@
 `include "xosera_pkg.sv"
 
 module xosera_main(
-    input  wire logic           bus_cs_n_i,         // register select strobe (active low)
-    input  wire logic           bus_rd_nwr_i,       // 0 = write, 1 = read
+    input  wire logic           bus_write_strobe_i, // strobe when a word of data written
+    input  wire logic           bus_read_strobe_i,  // strobe when a word of data read
     input  wire logic [3:0]     bus_reg_num_i,      // register number
-    input  wire logic           bus_bytesel_i,      // 0 = even byte, 1 = odd byte
+    input  wire logic           bus_bytesel_i,      // 0=even byte, 1=odd byte
     input  wire logic [7:0]     bus_data_i,         // 8-bit data bus input
     output logic      [7:0]     bus_data_o,         // 8-bit data bus output
-`ifdef EN_DTACK
-    output logic                bus_dtack_o,        // strobe for 68k DTACK signal
-`endif
+    output logic                bus_ack_o,          // strobe for cycle done
     output logic                bus_intr_o,         // Xosera CPU interrupt strobe
     output logic      [3:0]     red_o,              // red color gun output
     output logic      [3:0]     green_o,            // green color gun output
@@ -203,52 +201,50 @@ assign boot_select_o    = intr_mask[1:0];   // low two bits of interrupt mask us
 // register interface for CPU access
 reg_interface reg_interface(
     // bus
-    .bus_cs_n_i(bus_cs_n_i),            // bus chip select
-    .bus_rd_nwr_i(bus_rd_nwr_i),        // 0=write, 1=read
-    .bus_reg_num_i(bus_reg_num_i),      // register number (0-15)
-    .bus_bytesel_i(bus_bytesel_i),      // 0=even byte, 1=odd byte
-    .bus_data_i(bus_data_i),            // 8-bit data bus input
-    .bus_data_o(bus_data_o),            // 8-bit data bus output
-`ifdef EN_DTACK
-    .bus_dtack_o(bus_dtack_o),            // strobe for 68k DTACK signal
-`endif
+    .bus_write_strobe_i(bus_write_strobe_i),        // strobe when a word of data written
+    .bus_read_strobe_i(bus_read_strobe_i),          // strobe when a word of data read
+    .bus_reg_num_i(bus_reg_num_i),                  // register number
+    .bus_bytesel_i(bus_bytesel_i),                  // 0=even byte, 1=odd byte
+    .bus_data_i(bus_data_i),                        // 8-bit data bus input
+    .bus_data_o(bus_data_o),                        // 8-bit data bus output
+    .bus_ack_o(bus_ack_o),                          // strobe for cycle done
     // VRAM/XR
-    .vram_ack_i(regs_vram_ack),         // register interface ack (after reg read/write cycle)
-    .xr_ack_i(regs_xr_ack),             // register interface ack (after reg read/write cycle)
-    .regs_vram_sel_o(regs_vram_sel),    // register interface vram select
-    .regs_xr_sel_o(regs_xr_sel),        // register interface XR memory select
-    .regs_wr_o(regs_wr),                // register interface write
-    .regs_wrmask_o(regs_wr_mask),       // vram nibble masks
-    .regs_addr_o(xm_regs_addr),         // vram/XR address
-    .regs_data_o(xm_regs_data_out),     // 16-bit word write to XR/vram
-    .regs_data_i(vram_data_out),        // 16-bit word read from vram
-    .xr_data_i(xm_regs_data_in),        // 16-bit word read from XR
+    .vram_ack_i(regs_vram_ack),                     // register interface ack (after reg read/write cycle)
+    .xr_ack_i(regs_xr_ack),                         // register interface ack (after reg read/write cycle)
+    .regs_vram_sel_o(regs_vram_sel),                // register interface vram select
+    .regs_xr_sel_o(regs_xr_sel),                    // register interface XR memory select
+    .regs_wr_o(regs_wr),                            // register interface write
+    .regs_wrmask_o(regs_wr_mask),                   // vram nibble masks
+    .regs_addr_o(xm_regs_addr),                     // vram/XR address
+    .regs_data_o(xm_regs_data_out),                 // 16-bit word write to XR/vram
+    .regs_data_i(vram_data_out),                    // 16-bit word read from vram
+    .xr_data_i(xm_regs_data_in),                    // 16-bit word read from XR
     // status flags
-    .h_blank_i(h_blank),                // horizontal blank (non-visible)
-    .v_blank_i(v_blank),                // vertical blank (non-visible)
+    .h_blank_i(h_blank),                            // horizontal blank (non-visible)
+    .v_blank_i(v_blank),                            // vertical blank (non-visible)
 `ifdef EN_BLIT
-    .blit_busy_i(blit_busy),            // blit engine busy
-    .blit_full_i(blit_full),            // blit engine queue full
+    .blit_busy_i(blit_busy),                        // blit engine busy
+    .blit_full_i(blit_full),                        // blit engine queue full
 `endif
     // reconfig
     .reconfig_o(reconfig_o),
     // interrupts
 `ifdef EN_TIMER_INTR
-    .timer_intr_o(intr_trigger[xv::TIMER_INTR]),          // timer compare interrupt
+    .timer_intr_o(intr_trigger[xv::TIMER_INTR]),    // timer compare interrupt
 `endif
-    .intr_mask_o(intr_mask),            // enabled interrupts from INT_CTRL high byte
-    .intr_clear_o(intr_clear),          // strobe clears pending INT_CTRL interrupt
-    .intr_status_i(intr_status),        // status read from pending INT_CTRL interrupt
+    .intr_mask_o(intr_mask),                        // enabled interrupts from INT_CTRL high byte
+    .intr_clear_o(intr_clear),                      // strobe clears pending INT_CTRL interrupt
+    .intr_status_i(intr_status),                    // status read from pending INT_CTRL interrupt
 `ifdef EN_UART
 `ifndef EN_DTACK
-    .uart_txd_o(serial_txd_o),          // UART transmit pin hookup
+    .uart_txd_o(serial_txd_o),                      // UART transmit pin hookup
 `endif
 `ifndef EN_UART_TX
-    .uart_rxd_i(serial_rxd_i),          // UART receive pin hookup
+    .uart_rxd_i(serial_rxd_i),                      // UART receive pin hookup
 `endif
 `endif
 `ifdef BUS_DEBUG_SIGNALS
-    .bus_ack_o(dbug_cs_strobe),         // debug "ack" bus strobe
+    .bus_ack_o(dbug_cs_strobe),                     // debug "ack" bus strobe
 `endif
     .reset_i(reset_i),
     .clk(clk)

@@ -38,12 +38,13 @@
 `include "xosera_pkg.sv"
 
 module xosera_main(
-    input  wire logic           bus_write_strobe_i, // strobe when a word of data written
-    input  wire logic           bus_read_strobe_i,  // strobe when a word of data read
-    input  wire logic [3:0]     bus_reg_num_i,      // register number
-    input  wire logic           bus_bytesel_i,      // 0=even byte, 1=odd byte
-    input  wire logic [7:0]     bus_data_i,         // 8-bit data bus input
-    output logic      [7:0]     bus_data_o,         // 8-bit data bus output
+    input  wire logic           bus_write_l_strobe_i, // strobe when a word of data written
+    input  wire logic           bus_write_h_strobe_i, // strobe when a word of data written
+    input  wire logic           bus_read_l_strobe_i,  // strobe when a word of data read
+    input  wire logic           bus_read_h_strobe_i,  // strobe when a word of data read
+    input  wire logic  [3:0]    bus_reg_num_i,      // register number
+    input  wire logic  [15:0]   bus_data_i,         // 8-bit data bus input
+    output      logic  [15:0]   bus_data_o,         // 8-bit data bus output
     output logic                bus_rd_ack_o,       // read bus cycle complete
     output logic                bus_wr_ack_o,       // write bus cycle complete
     output logic                bus_intr_o,         // Xosera CPU interrupt strobe
@@ -202,10 +203,11 @@ assign boot_select_o    = intr_mask[1:0];   // low two bits of interrupt mask us
 // register interface for CPU access
 reg_interface reg_interface(
     // bus
-    .bus_write_strobe_i(bus_write_strobe_i),        // strobe when a word of data written
-    .bus_read_strobe_i(bus_read_strobe_i),          // strobe when a word of data read
+    .bus_write_l_strobe_i(bus_write_l_strobe_i),  // strobe when a word of data written
+    .bus_write_h_strobe_i(bus_write_h_strobe_i),  // strobe when a word of data written
+    .bus_read_l_strobe_i(bus_read_l_strobe_i),    // strobe when a word of data read
+    .bus_read_h_strobe_i(bus_read_h_strobe_i),    // strobe when a word of data read
     .bus_reg_num_i(bus_reg_num_i),                  // register number
-    .bus_bytesel_i(bus_bytesel_i),                  // 0=even byte, 1=odd byte
     .bus_data_i(bus_data_i),                        // 8-bit data bus input
     .bus_data_o(bus_data_o),                        // 8-bit data bus output
     .bus_rd_ack_o(bus_rd_ack_o),                    // read bus cycle complete

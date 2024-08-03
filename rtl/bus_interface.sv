@@ -23,12 +23,13 @@ module bus_interface(
     output      logic         bus_dtack_n_o,    // DTACK signal for FPGA
 `endif
     // register interface signals
-    output      logic         write_strobe_o,   // strobe for register write
-    output      logic         read_strobe_o,    // strobe for register read
+    output      logic         write_l_strobe_o, // strobe for register low write
+    output      logic         write_h_strobe_o, // strobe for register high write
+    output      logic         read_l_strobe_o,  // strobe for register low read
+    output      logic         read_h_strobe_o,  // strobe for register high read
     output      logic  [3:0]  reg_num_o,        // register number read/written
-    output      logic         bytesel_o,        // byte selected of register read/written
-    output      logic  [7:0]  bytedata_o,       // byte written to register
-    input  wire logic  [7:0]  bytedata_i,       // byte read from register
+    output      logic  [15:0] bytedata_o,       // byte written to register
+    input  wire logic  [15:0] bytedata_i,       // byte read from register
     input  wire logic         rd_ack_i,         // read cycle completed
     input  wire logic         wr_ack_i,         // write cycle completed
     // standard signals
@@ -37,82 +38,81 @@ module bus_interface(
 );
 
 // input synchronizers
-logic       cs_n_ff0;       // NOTE: needs extra FF, or read is too early
 logic       cs_n;
 logic       cs_n_last;      // previous state to determine edge
 logic       rd_nwr;
 logic       bytesel;
 logic [3:0] reg_num;
 byte_t      data;
-logic       bus_dtack_n;
 
-// async signal synchronizers
-always_ff @(posedge clk) begin
-    if (reset_i) begin
-        cs_n_ff0    <= 1'b0;
-        cs_n        <= 1'b0;
-        cs_n_last   <= 1'b0;
-        rd_nwr      <= 1'b0;
-        bytesel     <= 1'b0;
-        reg_num     <= 4'b0;
-        data        <= 8'b0;
-    end else begin
-        cs_n_ff0    <= bus_cs_n_i;
-        cs_n        <= cs_n_ff0;
-        cs_n_last   <= cs_n;
-        rd_nwr      <= bus_rd_nwr_i;
-        bytesel     <= bus_bytesel_i;
-        reg_num     <= bus_reg_num_i;
-        data        <= bus_data_i;
-    end
+always_comb begin
+    bytedata_o = {data, data};
 end
 
 always_ff @(posedge clk) begin
     if (reset_i) begin
-        write_strobe_o  <= 1'b0;
-        read_strobe_o   <= 1'b0;
-        reg_num_o       <= 4'h0;
-        bytesel_o       <= 1'b0;
-        bytedata_o      <= 8'h00;
+        cs_n        <= 1'b0;
+        cs_n_last  <= 1'b0;
+        rd_nwr      <= 1'b0;
+        bytesel     <= 1'b0;
+        reg_num     <= 4'b0;
+        data        <= 8'b0;
         bus_data_o      <= 8'h00;
+        write_l_strobe_o  <= 1'b0;
+        write_h_strobe_o  <= 1'b0;
+        read_l_strobe_o   <= 1'b0;
+        read_h_strobe_o   <= 1'b0;
+        reg_num_o       <= 4'h0;
         bus_dtack_n_o   <= xv::DTACK_N_NAK;     // default DTACK to NAK
-        bus_dtack_n     <= xv::DTACK_N_NAK;     // default DTACK to NAK
     end else begin
+        cs_n        <= bus_cs_n_i;
+        cs_n_last  <= cs_n;
+        rd_nwr      <= bus_rd_nwr_i;
+        bytesel     <= bus_bytesel_i;
+        reg_num     <= bus_reg_num_i;
+        data        <= bus_data_i;
+
         // set outputs
-        reg_num_o       <= reg_num;             // output selected register number
-        bytesel_o       <= bytesel;             // output selected byte of register
-        bytedata_o      <= data;                // output current data byte on bus
+        reg_num_o           <= reg_num;         // output selected register number
 
-        write_strobe_o  <= 1'b0;                // clear write strobe
-        read_strobe_o   <= 1'b0;                // clear read strobe
+        write_l_strobe_o    <= 1'b0;            // clear write low strobe
+        write_h_strobe_o    <= 1'b0;            // clear write high strobe
+        read_l_strobe_o     <= 1'b0;            // clear read low strobe
+        read_h_strobe_o     <= 1'b0;            // clear read high strobe
 
-        // if CS edge
-        if (cs_n_last == xv::CS_DISABLED && cs_n == xv::CS_ENABLED /*  && cs_n_ff0 == xv::CS_ENABLED */) begin
+        // if CS edge (filter out spurious pulse)
+        if (cs_n_last == xv::CS_DISABLED && cs_n == xv::CS_ENABLED) begin
             if (rd_nwr == xv::RnW_WRITE) begin
-                write_strobe_o  <= 1'b1;        // output write strobe
+                if (!bytesel) begin
+                    write_h_strobe_o  <= 1'b1;        // output write strobe
+                end else begin
+                    write_l_strobe_o  <= 1'b1;        // output write strobe
+                end
             end else begin
-                read_strobe_o   <= 1'b1;        // output read strobe
+                if (!bytesel) begin
+                    read_h_strobe_o   <= 1'b1;        // output read strobe
+                end else begin
+                    read_l_strobe_o   <= 1'b1;        // output read strobe
+                end
             end
         end
 
         // if ack pulse
         if (cs_n == xv::CS_ENABLED) begin
             if (rd_nwr == xv::RnW_WRITE && wr_ack_i) begin
-                bus_dtack_n <= xv::DTACK_N_ACK;
-            end else if (rd_nwr == xv::RnW_READ && rd_ack_i) begin
-                bus_dtack_n <= xv::DTACK_N_ACK;
-                bus_data_o <= bytedata_i;
+                bus_dtack_n_o <= xv::DTACK_N_ACK;
             end
-            
+            if (rd_nwr == xv::RnW_READ && rd_ack_i) begin
+                bus_dtack_n_o <= xv::DTACK_N_ACK;
+                if (!bytesel) begin
+                    bus_data_o  <= bytedata_i[15:8];
+                end else begin
+                    bus_data_o  <= bytedata_i[7:0];
+                end
+            end
+        end else begin
+            bus_dtack_n_o     <= xv::DTACK_N_NAK;     // set DTACK to NAK
         end
-
-        // clear DTACK signal if CS disabled
-        if (cs_n_ff0 == xv::CS_DISABLED) begin      // if CS not enabled
-            bus_dtack_n       <= xv::DTACK_N_NAK;   // set DTACK to NAK
-            bus_dtack_n_o     <= xv::DTACK_N_NAK;   // set DTACK to NAK
-        end
-
-        bus_dtack_n_o <= bus_dtack_n;
     end
 end
 

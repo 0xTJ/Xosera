@@ -69,22 +69,22 @@ SB_IO #(
     .INPUT_CLK(pclk),
     .OUTPUT_CLK(pclk),
     .OUTPUT_ENABLE(bus_out_ena),
-    .D_OUT_0(bus_data_out_r),
+    .D_OUT_0(bus_data_out),
     .D_IN_0(bus_data_in)
 );
 /* verilator lint_on PINMISSING */
 `else
 // NOTE: Using the registered ("_r") signal may be a win for <posedge pclk> -> async
 //        timing on bus_data_out signals (but might cause issues?)
-assign bus_data     = bus_out_ena ? bus_data_out_r  : 8'bZ;
+assign bus_data     = bus_out_ena ? bus_data_out  : 8'bZ;
 assign bus_data_in  = bus_data;
 `endif
 
-assign bus_dtack_n  = !bus_dtack;
+assign bus_dtack_n  = bus_dtack;
 
 // update registered signals each clock
 always_ff @(posedge pclk) begin
-    bus_data_out_r  <= bus_data_out;
+    bus_data_out_r  <= bus_data_out_r;
     bus_irq_n       <= bus_intr;
     reconfig_r      <= reconfig;
     boot_select_r   <= boot_select;

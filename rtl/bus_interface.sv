@@ -21,6 +21,7 @@ module bus_interface(
 `ifdef EN_DTACK
     output      logic         bus_dtack_o,            // DTACK signal for FPGA
 `endif
+    input wire logic bus_dtack_i,
     // register interface signals
     output      logic         write_strobe_o,         // strobe for register write
     output      logic         read_strobe_o,          // strobe for register read
@@ -45,7 +46,6 @@ logic [3:0] reg_num_ff0;
 logic [3:0] reg_num;
 byte_t      data_ff0;
 byte_t      data;
-logic       bus_dtack;
 
 // async signal synchronizers
 always_ff @(posedge clk) begin
@@ -90,7 +90,6 @@ always_ff @(posedge clk) begin
         bytesel_o       <= 1'b0;
         bytedata_o      <= 8'h00;
         bus_dtack_o     <= xv::DTACK_NAK;       // default DTACK to NAK
-        bus_dtack       <= xv::DTACK_NAK;       // default DTACK to NAK
     end else begin
         // set outputs
         reg_num_o       <= reg_num;             // output selected register number
@@ -100,6 +99,8 @@ always_ff @(posedge clk) begin
         write_strobe_o  <= 1'b0;                // clear write strobe
         read_strobe_o   <= 1'b0;                // clear read strobe
 
+        bus_dtack_o <=  bus_dtack_i;
+
         // if CS edge
         if (cs_n_last == xv::CS_DISABLED && cs_n == xv::CS_ENABLED /*  && cs_n_ff1 == xv::CS_ENABLED */) begin
             if (rd_nwr == xv::RnW_WRITE) begin
@@ -107,17 +108,13 @@ always_ff @(posedge clk) begin
             end else begin
                 read_strobe_o   <= 1'b1;        // output read strobe
             end
-
-            bus_dtack <= xv::DTACK_ACK;       // set DTACK to ACK (FPGA has sent/received data)
-        end
+            bus_dtack_o     <= xv::DTACK_NAK;       // set DTACK to NAK
+        end else
 
         // clear DTACK signal if CS disabled
         if (cs_n_ff0 == xv::CS_DISABLED) begin      // if CS not enabled
-            bus_dtack       <= xv::DTACK_NAK;       // set DTACK to NAK
             bus_dtack_o     <= xv::DTACK_NAK;       // set DTACK to NAK
         end
-
-        bus_dtack_o <=  bus_dtack;
     end
 end
 

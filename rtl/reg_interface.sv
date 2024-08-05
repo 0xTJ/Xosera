@@ -70,10 +70,12 @@ module reg_interface (
 addr_t          reg_rd_xaddr;           // XR read address (RD_XADDR)
 addr_t          reg_wr_xaddr;           // XR write address (WR_XADDR)
 word_t          reg_xdata;              // word read from XR bus (for RD_XDATA)
+word_t          reg_xdata_held;         // word read from XR bus (for RD_XDATA)
 
 word_t          reg_rd_incr;            // VRAM read increment
 addr_t          reg_rd_addr;            // VRAM read address
 word_t          reg_data;               // word read from VRAM (for RD_ADDR)
+word_t          reg_data_held;          // word read from VRAM (for RD_ADDR)
 
 word_t          reg_wr_incr;            // VRAM write increment
 addr_t          reg_wr_addr;            // VRAM write address
@@ -83,6 +85,9 @@ word_t          reg_timer;              // 1/10 ms timer
 byte_t          reg_timer_interval;     // 8-bit 1/10 ms timer interrupt interval
 byte_t          reg_timer_countdown;    // 8-bit timer interrupt interval counter
 `endif
+
+logic pending_vram_read;
+logic pending_xr_read;
 
 `ifdef EN_UART
 logic           uart_wr;
@@ -125,6 +130,8 @@ assign intr_mask_o = intr_mask;
 assign bus_ack_o = (bus_write_strobe | bus_read_strobe);
 `endif
 
+logic bus_dtack_tmp;
+
 // bus_interface handles signal synchronization, CS and register writes to Xosera
 bus_interface bus(
     .bus_cs_n_i(bus_cs_n_i),              // register select strobe
@@ -135,6 +142,7 @@ bus_interface bus(
 `ifdef EN_DTACK
     .bus_dtack_o(bus_dtack_o),            // strobe for 68k DTACK signal
 `endif
+    .bus_dtack_i(bus_dtack_tmp),
     .write_strobe_o(bus_write_strobe),    // strobe for bus byte write
     .read_strobe_o(bus_read_strobe),      // strobe for bus byte read
     .reg_num_o(bus_reg_num),              // register number from bus
@@ -306,6 +314,8 @@ always_comb begin
     endcase
 end
 
+logic [31:0] unused = {reg_data_held, reg_xdata_held};
+
 // xm registers write
 always_ff @(posedge clk) begin
     if (reset_i) begin
@@ -334,6 +344,10 @@ always_ff @(posedge clk) begin
         regs_wrmask_o   <= 4'b1111;
         intr_mask       <= '0;
 
+        pending_vram_read   <= 1'b0;
+        pending_xr_read     <= 1'b0;
+        bus_dtack_tmp       <= xv::DTACK_NAK;
+
 `ifdef EN_PIXEL_ADDR
         pixel_strobe    <= '0;
         reg_pixel_x     <= '0;
@@ -350,6 +364,8 @@ always_ff @(posedge clk) begin
 
         reg_data        <= '0;
         reg_xdata       <= '0;
+        reg_data_held   <= '0;
+        reg_xdata_held  <= '0;
 
 `ifdef EN_TIMER_INTR
         reg_timer_interval  <= '0;
@@ -380,12 +396,39 @@ always_ff @(posedge clk) begin
         xrd_incr_flag   <= 1'b0;
         xwr_incr_flag   <= 1'b0;
 
+        if (bus_read_strobe) begin
+            bus_dtack_tmp <= xv::DTACK_ACK;
+            reg_xdata_held <= reg_xdata;
+            reg_data_held <= reg_data;
+
+            if (bus_reg_num == xv::XM_XDATA) begin
+                if (xr_rd) begin
+                    pending_xr_read <= 1'b1;
+                    bus_dtack_tmp <= xv::DTACK_NAK;
+                end
+            end else if (bus_reg_num == xv::XM_DATA || bus_reg_num == xv::XM_DATA_2) begin
+                if (vram_rd) begin
+                    pending_vram_read <= 1'b1;
+                    bus_dtack_tmp <= xv::DTACK_NAK;
+                end
+            end
+        end
+
+        if (bus_write_strobe) begin
+            bus_dtack_tmp <= xv::DTACK_ACK;
+        end
+
         // VRAM access acknowledge
         if (vram_ack_i) begin
             // if rd read then save rd data, increment rd_addr
             if (vram_rd) begin
                 reg_data        <= regs_data_i;
                 rd_incr_flag    <= 1'b1;
+                if ((bus_read_strobe && (bus_reg_num == xv::XM_DATA || bus_reg_num == xv::XM_DATA_2)) || pending_vram_read) begin
+                    reg_data_held <= regs_data_i;
+                    pending_vram_read <= 1'b0;
+                    bus_dtack_tmp <= xv::DTACK_ACK;
+                end
             end
 
             // if we did a wr write, increment wr addr
@@ -403,6 +446,11 @@ always_ff @(posedge clk) begin
             if (xr_rd) begin
                 reg_xdata       <= xr_data_i;
                 xrd_incr_flag   <= 1'b1;
+                if ((bus_read_strobe && bus_reg_num == xv::XM_XDATA) || pending_xr_read) begin
+                    reg_xdata_held <= xr_data_i;
+                    pending_xr_read <= 1'b0;
+                    bus_dtack_tmp <= xv::DTACK_ACK;
+                end
             end
 
             if (regs_wr_o) begin
@@ -412,6 +460,10 @@ always_ff @(posedge clk) begin
             regs_xr_sel_o   <= 1'b0;            // clear xr select
             regs_wr_o       <= 1'b0;            // clear write
             xr_rd           <= 1'b0;            // clear pending xr read
+        end
+
+        if (bus_cs_n_i == xv::CS_DISABLED) begin
+            bus_dtack_tmp <= xv::DTACK_NAK;
         end
 
         if (wr_incr_flag) begin

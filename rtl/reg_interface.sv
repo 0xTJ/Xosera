@@ -271,7 +271,7 @@ always_comb begin
         xv::XM_WR_XADDR:
             rd_temp_word  = reg_wr_xaddr;
         xv::XM_XDATA:
-            rd_temp_word  = reg_xdata;
+            rd_temp_word  = reg_xdata_held;
         xv::XM_RD_INCR:
             rd_temp_word  = reg_rd_incr;
         xv::XM_RD_ADDR:
@@ -282,7 +282,7 @@ always_comb begin
             rd_temp_word  = reg_wr_addr;
         xv::XM_DATA,
         xv::XM_DATA_2:
-            rd_temp_word  = reg_data;
+            rd_temp_word  = reg_data_held;
 `ifdef EN_UART
         xv::XM_UART:
 `ifndef EN_UART_TX

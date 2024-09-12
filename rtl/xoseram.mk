@@ -75,13 +75,34 @@ ifneq ($(strip $(PF_B)),false)
 VERILOG_DEFS += -DEN_PF_B
 endif
 
+XOSERAM_REV?=B
+ifeq ($(strip $(XOSERAM_REV)),A)
+# Xosera project setup for XoseRAM Rev. A
+TOP := xosera_xoseram
+PIN_DEF := xoseram/xoseram_rev_a.pcf
+DEVICE := up5k
+PACKAGE := sg48
+VERILOG_DEFS += -DXOSERAM_REV_A
+OUTSUFFIX_REV := rev_a
+else ifeq ($(strip $(XOSERAM_REV)),B)
+# Xosera project setup for XoseRAM Rev. B
+TOP := xosera_xoseram
+PIN_DEF := xoseram/xoseram_rev_b.pcf
+DEVICE := up5k
+PACKAGE := sg48
+VERILOG_DEFS += -DXOSERAM_REV_B
+OUTSUFFIX_REV := rev_b
+else
+$(error Invalid XoseRAM revision: "$(strip $(XOSERAM_REV))")
+endif
+
 AUDIO ?= 4
 
 ifeq ($(strip $(AUDIO)),0)
-OUTSUFFIX := $(subst MODE_,,$(VIDEO_MODE))
+OUTSUFFIX := $(OUTSUFFIX_REV)_$(subst MODE_,,$(VIDEO_MODE))
 else
 VERILOG_DEFS += -DEN_AUDIO=$(AUDIO)
-OUTSUFFIX := aud$(AUDIO)_$(subst MODE_,,$(VIDEO_MODE))
+OUTSUFFIX := $(OUTSUFFIX_REV)_aud$(AUDIO)_$(subst MODE_,,$(VIDEO_MODE))
 endif
 
 FONTFILES := $(wildcard tilesets/*.mem)
@@ -91,12 +112,6 @@ SRCDIR := .
 
 # log output directory
 LOGS := xosera/logs
-
-# Xosera project setup for XoseRAM Rev. A
-TOP := xosera_xoseram
-PIN_DEF := xoseram/xoseram_rev_a.pcf
-DEVICE := up5k
-PACKAGE := sg48
 
 # Verilog source directories
 VPATH := $(SRCDIR) xoseram

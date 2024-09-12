@@ -19,6 +19,9 @@ module xosera_xoseram(
             input  logic        bus_bytesel,       // m68k bus byte select (RGB blue when output)
             input  logic [3:0]  bus_reg_num,        // m68k bus regnum 0
             inout  logic [7:0]  bus_data,        // m68k bus regnum 1
+`ifndef XOSERAM_REV_A
+            output logic        audio_l,        // m68k bus regnum 3
+`endif
             output logic        audio_r,        // m68k bus regnum 3
             output logic [3:0]  dv_r,        // audio left output
             output logic [3:0]  dv_g,        // audio left output
@@ -188,6 +191,9 @@ xosera_main xosera_main(
     .bus_data_i(bus_data_in),
     .bus_data_o(bus_data_out),
     .bus_dtack_o(bus_dtack),
+`ifndef XOSERAM_REV_A
+    .audio_l_o(audio_l),
+`endif
     .audio_r_o(audio_r),
     .reconfig_o(reconfig),
     .boot_select_o(boot_select),

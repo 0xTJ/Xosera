@@ -35,7 +35,6 @@ module bus_interface(
 
 // input synchronizers
 logic       cs_n_ff0;
-logic       cs_n_ff1;       // NOTE: needs extra FF, or read is too early
 logic       cs_n;
 logic       cs_n_last;      // previous state to determine edge
 logic       rd_nwr_ff0;
@@ -51,7 +50,6 @@ byte_t      data;
 always_ff @(posedge clk) begin
     if (reset_i) begin
         cs_n_ff0    <= 1'b0;
-        cs_n_ff1    <= 1'b0;
         cs_n        <= 1'b0;
         cs_n_last   <= 1'b0;
         rd_nwr_ff0  <= 1'b0;
@@ -64,8 +62,7 @@ always_ff @(posedge clk) begin
         data        <= 8'b0;
     end else begin
         cs_n_ff0    <= bus_cs_n_i;
-        cs_n_ff1    <= cs_n_ff0;
-        cs_n        <= cs_n_ff1;
+        cs_n        <= cs_n_ff0;
         cs_n_last   <= cs_n;
 
         rd_nwr_ff0  <= bus_rd_nwr_i;

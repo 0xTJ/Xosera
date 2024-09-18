@@ -56,7 +56,6 @@ logic [1:0] boot_select_r;              // registered signal, to improve timing
 // split tri-state data lines into in/out signals for inside FPGA
 logic bus_out_ena;
 logic [7:0] bus_data_out;               // bus out from Xosera
-logic [7:0] bus_data_out_r;             // registered bus_data_out signal (experimental)
 logic [7:0] bus_data_in;                // bus input to Xosera
 
 // only set bus to output if Xosera is selected and read is selected
@@ -77,8 +76,6 @@ SB_IO #(
 );
 /* verilator lint_on PINMISSING */
 `else
-// NOTE: Using the registered ("_r") signal may be a win for <posedge pclk> -> async
-//        timing on bus_data_out signals (but might cause issues?)
 assign bus_data     = bus_out_ena ? bus_data_out  : 8'bZ;
 assign bus_data_in  = bus_data;
 `endif
@@ -87,7 +84,6 @@ assign bus_dtack_n  = bus_dtack;
 
 // update registered signals each clock
 always_ff @(posedge pclk) begin
-    bus_data_out_r  <= bus_data_out_r;
     bus_irq_n       <= bus_intr;
     reconfig_r      <= reconfig;
     boot_select_r   <= boot_select;

@@ -49,11 +49,11 @@ byte_t      data;
 // async signal synchronizers
 always_ff @(posedge clk) begin
     if (reset_i) begin
-        cs_n_ff0    <= 1'b0;
-        cs_n        <= 1'b0;
-        cs_n_last   <= 1'b0;
-        rd_nwr_ff0  <= 1'b0;
-        rd_nwr      <= 1'b0;
+        cs_n_ff0    <= xv::CS_DISABLED;
+        cs_n        <= xv::CS_DISABLED;
+        cs_n_last   <= xv::CS_DISABLED;
+        rd_nwr_ff0  <= xv::RnW_READ;
+        rd_nwr      <= xv::RnW_READ;
         bytesel_ff0 <= 1'b0;
         bytesel     <= 1'b0;
         reg_num_ff0 <= 4'b0;

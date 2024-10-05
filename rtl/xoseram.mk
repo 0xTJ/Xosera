@@ -1,4 +1,4 @@
-# xoseram.mk - Xosera for XoseRAM Rev. A FPGA board
+# xoseram.mk - Xosera for XoseRAM
 # vim: set noet ts=8 sw=8
 
 # Using icestorm tools + yosys + nextpnr

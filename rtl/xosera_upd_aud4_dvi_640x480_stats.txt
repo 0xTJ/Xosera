@@ -1,24 +1,17 @@
 === UPduino Xosera: PMOD_1B2_DVI12 MODE_640x480
-   XOSERA xosera_info:    Xosera v0.40 20240530 =#04BAFCDE iCE40UP5K 128KB PF_B BLND COPP BLIT PIXA PNTR AUD4
+   XOSERA xosera_info:    Xosera v0.40 20240214 =#0088ECA8 iCE40UP5K 128KB PF_B BLND COPP BLIT PIXA PNTR AUD4
    XOSERA configuration:  MODE_640x480@60 PF_B BLND COPP BLIT PIXA PNTR AUD4 
-Package: oss-cad-suite-linux-x64-20240518
-Yosys 0.41+83 (git sha1 7045cf509, clang++ 14.0.0-1ubuntu1.1 -fPIC -Os)
-"nextpnr-ice40" -- Next Generation Place and Route (Version nextpnr-0.7-39-gb7f91e57)
+Package: oss-cad-suite-darwin-arm64-20240214
+Yosys 0.38+41 (git sha1 91685355a, aarch64-apple-darwin21.4-clang++ 14.0.0-1ubuntu1.1 -fPIC -Os)
+"nextpnr-ice40" -- Next Generation Place and Route (Version nextpnr-0.7-9-g255633c9)
 Info: Device utilisation:
-Info: 	         ICESTORM_LC:    4935/   5280    93%
-Info: 	        ICESTORM_RAM:      30/     30   100%
-Info: 	               SB_IO:      38/     96    39%
-Info: 	               SB_GB:       8/      8   100%
-Info: 	        ICESTORM_PLL:       1/      1   100%
-Info: 	         SB_WARMBOOT:       1/      1   100%
-Info: 	        ICESTORM_DSP:       8/      8   100%
-Info: 	      ICESTORM_HFOSC:       0/      1     0%
-Info: 	      ICESTORM_LFOSC:       0/      1     0%
-Info: 	              SB_I2C:       0/      2     0%
-Info: 	              SB_SPI:       0/      2     0%
-Info: 	              IO_I3C:       0/      2     0%
-Info: 	         SB_LEDDA_IP:       0/      1     0%
-Info: 	         SB_RGBA_DRV:       0/      1     0%
-Info: 	      ICESTORM_SPRAM:       4/      4   100%
+Info: 	         ICESTORM_LC:  5003/ 5280    94%
+Info: 	        ICESTORM_RAM:    30/   30   100%
+Info: 	               SB_IO:    38/   96    39%
+Info: 	               SB_GB:     8/    8   100%
+Info: 	        ICESTORM_PLL:     1/    1   100%
+Info: 	         SB_WARMBOOT:     1/    1   100%
+Info: 	        ICESTORM_DSP:     8/    8   100%
+Info: 	      ICESTORM_SPRAM:     4/    4   100%
 
-Info: Max frequency for clock 'pclk': 36.62 MHz (PASS at 25.14 MHz)
+Info: Max frequency for clock 'pclk': 36.01 MHz (PASS at 25.14 MHz)

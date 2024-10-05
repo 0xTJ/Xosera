@@ -1,4 +1,4 @@
-// xosera_xoseram.sv - Top module for UPduino v3.0 Xosera
+// xosera_xoseram.sv - Top module for XoseRAM Xosera
 //
 // vim: set et ts=4 sw=4
 //

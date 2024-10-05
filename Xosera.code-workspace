@@ -97,8 +97,6 @@
 			"DIVR",
 			"divu",
 			"dprintch",
-			"dputc",
-			"dputs",
 			"DSPI",
 			"DTACK",
 			"dumpfile",
@@ -288,6 +286,7 @@
 			"xmreg",
 			"xosera",
 			"Xosera",
+			"XOSERABASE",
 			"xreg",
 			"XRGB",
 			"xrmem",
@@ -390,9 +389,11 @@
 			"unordered_set": "cpp",
 			"cop_blend_test.h": "c",
 			"cop_wavey.h": "c",
+			"xosera.h": "c",
 			"boing_copper.h": "c",
-			"xosera_m68k_api.h": "c",
-			"cop_hsplit.h": "c"
+			"cop_hsplit.h": "c",
+			"basicio.h": "c",
+			"stdlib.h": "c"
 		},
 		"workbench.colorCustomizations": {
 			"terminal.foreground": "#08D808",

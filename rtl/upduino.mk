@@ -68,7 +68,11 @@ VIDEO_MODE ?= MODE_848x480
 VIDEO_OUTPUT ?= PMOD_DIGILENT_VGA
 
 # copper assembly
-COPASM=$(XOSERA_M68K_API)/bin/copasm
+ifeq (,$(shell xosera-copasm -h >/dev/null 2>&1))
+COPASM?=$(xosera_m68k_api)/bin/xosera-copasm
+else
+COPASM?=xosera-copasm
+endif
 RESET_COP=default_copper.casm
 ifeq ($(findstring 640x,$(VIDEO_MODE)),)
 RESET_COPMEM=default_copper_848.mem
@@ -144,7 +148,7 @@ FLOW3 :=
 #YOSYS_SYNTH_ARGS := -device u -abc9 -relut -top $(TOP)
 #YOSYS_SYNTH_ARGS := -device u -no-rw-check -abc2 -top $(TOP)
 #YOSYS_SYNTH_ARGS := -device u -no-rw-check -abc9 -dff -top $(TOP)
-#FLOW3 := ; scratchpad -copy abc9.script.flow3 abc9.script
+FLOW3 := ; scratchpad -copy abc9.script.flow3 abc9.script
 YOSYS_SYNTH_ARGS := -device u -no-rw-check -dff -top $(TOP)
 
 # Verilog preprocessor definitions common to all modules
@@ -236,9 +240,13 @@ ifdef FMAX_TEST	# run nextPNR FMAX_TEST times to determine "Max frequency" range
 	done ; \
 	wait
 	@num=1 ; while [[ $$num -le $(FMAX_TEST) ]] ; do \
-	  grep "Max frequency" $(LOGS)/fmax/$(OUTNAME)_$${num}_nextpnr.log | tail -1 | cut -d " " -f 7 >"$(LOGS)/fmax/fmax_temp.txt" ; \
-	  FMAX=$$(cat "$(LOGS)/fmax/fmax_temp.txt") ; \
-	  echo $${num} $${FMAX} "$(LOGS)/fmax/$(OUTNAME)_$${num}.asc" >> $(LOGS)/fmax/$(OUTNAME)_list.log ; \
+	    if (test -f "$(LOGS)/fmax/$(OUTNAME)_$${num}.asc") ; then \
+	      grep "Max frequency" $(LOGS)/fmax/$(OUTNAME)_$${num}_nextpnr.log | tail -1 | cut -d " " -f 7 >"$(LOGS)/fmax/fmax_temp.txt" ; \
+	      FMAX=$$(cat "$(LOGS)/fmax/fmax_temp.txt") ; \
+	      echo $${num} $${FMAX} "$(LOGS)/fmax/$(OUTNAME)_$${num}.asc" >> $(LOGS)/fmax/$(OUTNAME)_list.log ; \
+	    else \
+	      echo $${num} 0.0 "no-output.asc" >> $(LOGS)/fmax/$(OUTNAME)_list.log ; \
+	    fi ; \
 	  ((num = num + 1)) ; \
 	done
 	@echo === fMAX after $(FMAX_TEST) runs: ===

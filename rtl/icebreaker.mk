@@ -142,14 +142,14 @@ ICEMULTI := icemulti
 YOSYS_ARGS := -e "no driver"
 
 # Yosys synthesis arguments
-FLOW3 :=
 #YOSYS_SYNTH_ARGS := -device u -retime -top $(TOP)
 #YOSYS_SYNTH_ARGS := -device u -abc2 -relut -retime -top $(TOP)
 #YOSYS_SYNTH_ARGS := -device u -abc9 -relut -top $(TOP)
 #YOSYS_SYNTH_ARGS := -device u -no-rw-check -abc2 -top $(TOP)
 #YOSYS_SYNTH_ARGS := -device u -no-rw-check -abc9 -dff -top $(TOP)
-#FLOW3 := ; scratchpad -copy abc9.script.flow3 abc9.script
+FLOW3 := ; scratchpad -copy abc9.script.flow3 abc9.script
 YOSYS_SYNTH_ARGS := -device u -no-rw-check -dff -top $(TOP)
+FLOW3?=
 
 # Verilog preprocessor definitions common to all modules
 DEFINES := -DNO_ICE40_DEFAULT_ASSIGNMENTS -DGITCLEAN=$(XOSERA_CLEAN) -DGITHASH=$(XOSERA_HASH) -DBUILDDATE=$(BUILDDATE) -DFPGA_CONFIG_NUM=$(FPGA_CONFIG_NUM) $(VERILOG_DEFS) -DICE40UP5K -DICEBREAKER
@@ -229,18 +229,13 @@ ifdef FMAX_TEST	# run nextPNR FMAX_TEST times to determine "Max frequency" range
 	@-cp $< $(LOGS)/fmax
 	@num=1 ; while [[ $$num -le $(FMAX_TEST) ]] ; do \
 	  ( \
-	    $(NEXTPNR) -l "$(LOGS)/fmax/$(OUTNAME)_$${num}_nextpnr.log" -q --timing-allow-fail $(NEXTPNR_ARGS) --$(DEVICE) --package $(PACKAGE) --json $< --pcf $(PIN_DEF) --asc $(LOGS)/fmax/$(OUTNAME)_$${num}.asc ; \
+	    nice -n 15 $(NEXTPNR) -l "$(LOGS)/fmax/$(OUTNAME)_$${num}_nextpnr.log" -q --timing-allow-fail $(NEXTPNR_ARGS) --$(DEVICE) --package $(PACKAGE) --json $< --pcf $(PIN_DEF) --asc $(LOGS)/fmax/$(OUTNAME)_$${num}.asc ; \
 	    grep "Max frequency" $(LOGS)/fmax/$(OUTNAME)_$${num}_nextpnr.log | tail -1 | cut -d " " -f 2- ; \
 	  ) & \
 	  pids[$${num}]=$$! ; \
 	  ((num = num + 1)) ; \
-	  if ((num > ($(MAX_CPUS) - 1))) ; then \
-	    if ((num % $(MAX_CPUS) == ($(MAX_CPUS) - 1))); then \
-	      ((wnum = num - $(MAX_CPUS))) ; \
-	      wait $${pid[wnum]} ; \
-	    fi ; \
-	  fi ; \
 	done ; \
+        echo ...waiting for $(FMAX_TEST) runs to complete... ; \
 	wait
 	@num=1 ; while [[ $$num -le $(FMAX_TEST) ]] ; do \
 	    if (test -f "$(LOGS)/fmax/$(OUTNAME)_$${num}.asc") ; then \
@@ -253,11 +248,11 @@ ifdef FMAX_TEST	# run nextPNR FMAX_TEST times to determine "Max frequency" range
 	  ((num = num + 1)) ; \
 	done
 	@echo === fMAX after $(FMAX_TEST) runs: ===
-	@awk '{ total += $$2 ; minv = (minv == 0 || minv > $$2 ? $$2 : minv) ; maxv = (maxv < $$2 ? $$2 : maxv) ; count++ } END \
-	  { print "fMAX: Minimum frequency:", minv ; print "fMAX: Average frequency:", total/count ; print "fMAX: Maximum frequency:", maxv, "   <== selected as best" ; }' $(LOGS)/fmax/$(OUTNAME)_list.log
+	@awk '{ if ($$2 == 0 ) { failcount++} else { total += $$2 ; minv = (minv == 0 || minv > $$2 ? $$2 : minv) ; maxv = (maxv < $$2 ? $$2 : maxv) ; count++ } } END \
+	  { print "fMAX: Successful runs  :", count ; print "fMAX: Minimum frequency:", minv ; print "fMAX: Average frequency:", total/count ; print "fMAX: Maximum frequency:", maxv, "   <== selected as best" ; }' $(LOGS)/fmax/$(OUTNAME)_list.log
 	@echo === fMAX after $(FMAX_TEST) runs: === > $(LOGS)/$(OUTNAME)_fmax.txt
-	@awk '{ total += $$2 ; minv = (minv == 0 || minv > $$2 ? $$2 : minv) ; maxv = (maxv < $$2 ? $$2 : maxv) ; count++ } END \
-	  { print "fMAX: Minimum frequency:", minv ; print "fMAX: Average frequency:", total/count ; print "fMAX: Maximum frequency:", maxv, "   <== selected as best" ; }' $(LOGS)/fmax/$(OUTNAME)_list.log >> $(LOGS)/$(OUTNAME)_fmax.txt
+	@awk '{ if ($$2 == 0 ) { failcount++} else { total += $$2 ; minv = (minv == 0 || minv > $$2 ? $$2 : minv) ; maxv = (maxv < $$2 ? $$2 : maxv) ; count++ } } END \
+	  { print "fMAX: Successful runs  :", count ; print "fMAX: Minimum frequency:", minv ; print "fMAX: Average frequency:", total/count ; print "fMAX: Maximum frequency:", maxv, "   <== selected as best" ; }' $(LOGS)/fmax/$(OUTNAME)_list.log >> $(LOGS)/$(OUTNAME)_fmax.txt
 	@awk '{ if (maxv < $$2) { best = $$1 ; maxv = $$2 ; } ; } END { print best, maxv ; }' $(LOGS)/fmax/$(OUTNAME)_list.log  > "$(LOGS)/fmax/fmax_temp.txt"
 	@BEST=$$(cut -d " " -f1 "$(LOGS)/fmax/fmax_temp.txt") FMAX=$$(cut -d " " -f2 "$(LOGS)/fmax/fmax_temp.txt") ; \
 	  cp "$(LOGS)/fmax/$(OUTNAME)_$${BEST}_nextpnr.log" "$(LOGS)/$(OUTNAME)_nextpnr.log" ; \
@@ -312,7 +307,7 @@ $(COPASM):
 	@echo === Building copper assembler...
 	cd $(XOSERA_M68K_API)/../copper/CopAsm/ && $(MAKE)
 	@mkdir -p $(@D)
-	cp -v $(XOSERA_M68K_API)/../copper/CopAsm/bin/copasm $(COPASM)
+	cp -v $(XOSERA_M68K_API)/../copper/CopAsm/bin/xosera-copasm $(COPASM)
 
 # assemble casm into mem file
 cop_init:  $(COPASM) $(RESET_COP)

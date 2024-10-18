@@ -53,19 +53,24 @@ logic [1:0] boot_select;                // two bit number for flash configuratio
 logic [1:0] boot_select_r;              // registered signal, to improve timing
 /* verilator lint_on UNDRIVEN */
 
+logic bus_cs_n_int;
+logic bus_rd_nwr_int;
+logic bus_bytesel_int;
+logic [3:0] bus_reg_num_int;
+
 // split tri-state data lines into in/out signals for inside FPGA
 logic bus_out_ena;
 logic [7:0] bus_data_out;               // bus out from Xosera
 logic [7:0] bus_data_in;                // bus input to Xosera
 
 // only set bus to output if Xosera is selected and read is selected
-assign bus_out_ena  = (bus_cs_n == xv::CS_ENABLED && bus_rd_nwr == xv::RnW_READ);
+assign bus_out_ena  = (bus_cs_n_int == xv::CS_ENABLED && bus_rd_nwr_int == xv::RnW_READ);
 
 `ifdef SYNTHESIS
 // NOTE: Use iCE40 SB_IO primitive to control tri-state properly here
 /* verilator lint_off PINMISSING */
 SB_IO #(
-    .PIN_TYPE(6'b101001)    //PIN_OUTPUT_TRISTATE|PIN_INPUT
+    .PIN_TYPE(6'b101000)    //PIN_OUTPUT_TRISTATE | PIN_INPUT_REGISTERED
 ) bus_tristate [7:0] (
     .PACKAGE_PIN(bus_data),
     .INPUT_CLK(pclk),
@@ -84,7 +89,6 @@ assign bus_dtack_n  = bus_dtack;
 
 // update registered signals each clock
 always_ff @(posedge pclk) begin
-    bus_irq_n       <= bus_intr;
     reconfig_r      <= reconfig;
     boot_select_r   <= boot_select;
 end
@@ -131,15 +135,35 @@ SB_IO #(
 );
 
 SB_IO #(
+    .PIN_TYPE(6'b000000)   // PIN_NO_OUTPUT | PIN_INPUT_REGISTERED
+) dsadas [6:0](
+    .PACKAGE_PIN({bus_cs_n, bus_rd_nwr, bus_bytesel, bus_reg_num}),
+    .INPUT_CLK(pclk),
+    .D_IN_0({bus_cs_n_int, bus_rd_nwr_int, bus_bytesel_int, bus_reg_num_int})
+);
+
+SB_IO #(
     .PIN_TYPE(6'b010100)   // PIN_OUTPUT_REGISTERED
 ) dv_signals_sbio [14: 0](
     .PACKAGE_PIN({dv_de, dv_vs,  dv_hs, dv_r, dv_g, dv_b}),
     .OUTPUT_CLK(pclk),
     .D_OUT_0({dv_de_int, dv_vs_int, dv_hs_int, dv_r_int, dv_g_int, dv_b_int}),
 );
+
+SB_IO #(
+    .PIN_TYPE(6'b010100)   // PIN_OUTPUT_REGISTERED
+) dsadasd (
+    .PACKAGE_PIN(bus_irq_n),
+    .OUTPUT_CLK(pclk),
+    .D_OUT_0(bus_intr)
+);
 `else
+assign {bus_cs_n_int, bus_rd_nwr_int, bus_bytesel_int, bus_reg_num_int} = {bus_cs_n, bus_rd_nwr, bus_bytesel, bus_reg_num};
 assign {dv_de, dv_vs,  dv_hs, dv_r, dv_g, dv_b} = {dv_de_int, dv_vs_int, dv_hs_int, dv_r_int, dv_g_int, dv_b_int};
 assign dv_idck   = pclk;    // output HDMI clk
+always_ff @(posedge pclk) begin
+    bus_irq_n       <= bus_intr;
+end
 `endif
 
 `ifdef SYNTHESIS
@@ -180,10 +204,10 @@ xosera_main xosera_main(
     .vsync_o(dv_vs_int),
     .hsync_o(dv_hs_int),
     .dv_de_o(dv_de_int),
-    .bus_cs_n_i(bus_cs_n),
-    .bus_rd_nwr_i(bus_rd_nwr),
-    .bus_reg_num_i(bus_reg_num),
-    .bus_bytesel_i(bus_bytesel),
+    .bus_cs_n_i(bus_cs_n_int),
+    .bus_rd_nwr_i(bus_rd_nwr_int),
+    .bus_reg_num_i(bus_reg_num_int),
+    .bus_bytesel_i(bus_bytesel_int),
     .bus_data_i(bus_data_in),
     .bus_data_o(bus_data_out),
     .bus_dtack_o(bus_dtack),

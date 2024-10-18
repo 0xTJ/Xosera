@@ -1,12 +1,12 @@
 === XoseRAM Xosera: MODE_640x480
--- Running command `verilog_defines -DNO_ICE40_DEFAULT_ASSIGNMENTS -DGITCLEAN=1 -DGITHASH=9686aba -DBUILDDATE=20240930 -DFPGA_CONFIG_NUM=0 -DMODE_640x480 -DEN_PF_B -DXOSERAM_REV_B -DEN_AUDIO=4 -DICE40UP5K -DXOSERAM ; read_verilog -I. -sv xoseram/xosera_xoseram.sv ./acia_rx.sv ./acia.sv ./acia_tx.sv ./audio_dac.sv ./audio_mem.sv ./audio_mixer_slim.sv ./blitter_slim.sv ./bus_interface.sv ./colormem.sv ./coppermem.sv ./copper_slim.sv ./pointermem.sv ./reg_interface.sv ./spi_target.sv ./tilemem.sv ./video_blend_2bit.sv ./video_blend_4bit.sv ./video_gen.sv ./video_playfield.sv ./video_timing.sv ./vram_arb.sv ./vram.sv ./xosera_main.sv ./xosera_pkg.sv ./xrmem_arb.sv  ; synth_ice40 -device u -no-rw-check -dff -top xosera_xoseram -json xoseram/xosera_xoseram_rev_b_aud4_640x480.json' --
-   XOSERA xosera_info:    Xosera v0.40 20240930 =#09686ABA iCE40UP5K 128KB PF_B BLND COPP BLIT PIXA PNTR DTAK AUD4
+-- Running command `verilog_defines -DNO_ICE40_DEFAULT_ASSIGNMENTS -DGITCLEAN=0 -DGITHASH=595a6ae -DBUILDDATE=20241011 -DFPGA_CONFIG_NUM=0 -DMODE_640x480 -DEN_PF_B -DXOSERAM_REV_B -DEN_AUDIO=4 -DICE40UP5K -DXOSERAM ; read_verilog -I. -sv xoseram/xosera_xoseram.sv ./acia_rx.sv ./acia.sv ./acia_tx.sv ./audio_dac.sv ./audio_mem.sv ./audio_mixer_slim.sv ./blitter_slim.sv ./bus_interface.sv ./colormem.sv ./coppermem.sv ./copper_slim.sv ./pointermem.sv ./reg_interface.sv ./spi_target.sv ./tilemem.sv ./video_blend_2bit.sv ./video_blend_4bit.sv ./video_gen.sv ./video_playfield.sv ./video_timing.sv ./vram_arb.sv ./vram.sv ./xosera_main.sv ./xosera_pkg.sv ./xrmem_arb.sv  ; synth_ice40 -device u -no-rw-check -dff -top xosera_xoseram -json xoseram/xosera_xoseram_rev_b_aud4_640x480.json' --
+   XOSERA xosera_info:    Xosera v0.40 20241011 >#0595A6AE iCE40UP5K 128KB PF_B BLND COPP BLIT PIXA PNTR DTAK AUD4
    XOSERA configuration:  MODE_640x480@60 PF_B BLND COPP BLIT PIXA PNTR AUD4 
-Package: oss-cad-suite-linux-x64-20240928
-Yosys 0.45+139 (git sha1 8e1e2b9a3, clang++ 14.0.0-1ubuntu1.1 -fPIC -O3)
-"nextpnr-ice40" -- Next Generation Place and Route (Version nextpnr-0.7-112-g1967db17)
+Package: oss-cad-suite-linux-x64-20241010
+Yosys 0.46+11 (git sha1 0200a7680, clang++ 14.0.0-1ubuntu1.1 -fPIC -O3)
+"nextpnr-ice40" -- Next Generation Place and Route (Version nextpnr-0.7-129-gcf42baa4)
 Info: Device utilisation:
-Info: 	         ICESTORM_LC:    5074/   5280    96%
+Info: 	         ICESTORM_LC:    5069/   5280    96%
 Info: 	        ICESTORM_RAM:      30/     30   100%
 Info: 	               SB_IO:      37/     96    38%
 Info: 	               SB_GB:       8/      8   100%
@@ -15,4 +15,4 @@ Info: 	         SB_WARMBOOT:       1/      1   100%
 Info: 	        ICESTORM_DSP:       8/      8   100%
 Info: 	      ICESTORM_SPRAM:       4/      4   100%
 
-Info: Max frequency for clock 'pclk': 36.68 MHz (PASS at 25.14 MHz)
+Info: Max frequency for clock 'pclk': 33.39 MHz (PASS at 25.14 MHz)

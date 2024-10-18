@@ -34,48 +34,30 @@ module bus_interface(
 );
 
 // input synchronizers
-logic       cs_n_ff0;
 logic       cs_n;
 logic       cs_n_last;      // previous state to determine edge
-logic       rd_nwr_ff0;
 logic       rd_nwr;
-logic       bytesel_ff0;
 logic       bytesel;
-logic [3:0] reg_num_ff0;
 logic [3:0] reg_num;
-byte_t      data_ff0;
 byte_t      data;
 
 // async signal synchronizers
 always_ff @(posedge clk) begin
     if (reset_i) begin
-        cs_n_ff0    <= xv::CS_DISABLED;
         cs_n        <= xv::CS_DISABLED;
         cs_n_last   <= xv::CS_DISABLED;
-        rd_nwr_ff0  <= xv::RnW_READ;
         rd_nwr      <= xv::RnW_READ;
-        bytesel_ff0 <= 1'b0;
         bytesel     <= 1'b0;
-        reg_num_ff0 <= 4'b0;
         reg_num     <= 4'b0;
-        data_ff0    <= 8'b0;
         data        <= 8'b0;
     end else begin
-        cs_n_ff0    <= bus_cs_n_i;
-        cs_n        <= cs_n_ff0;
+        cs_n        <= bus_cs_n_i;
         cs_n_last   <= cs_n;
+        rd_nwr      <= bus_rd_nwr_i;
+        bytesel     <= bus_bytesel_i;
+        reg_num     <= bus_reg_num_i;
 
-        rd_nwr_ff0  <= bus_rd_nwr_i;
-        rd_nwr      <= rd_nwr_ff0;
-
-        bytesel_ff0 <= bus_bytesel_i;
-        bytesel     <= bytesel_ff0;
-
-        reg_num_ff0 <= bus_reg_num_i;
-        reg_num     <= reg_num_ff0;
-
-        data_ff0    <= bus_data_i;
-        data        <= data_ff0;
+        data        <= bus_data_i;
     end
 end
 
@@ -109,7 +91,7 @@ always_ff @(posedge clk) begin
         end else
 
         // clear DTACK signal if CS disabled
-        if (cs_n_ff0 == xv::CS_DISABLED) begin      // if CS not enabled
+        if (bus_cs_n_i == xv::CS_DISABLED) begin      // if CS not enabled
             bus_dtack_o     <= xv::DTACK_NAK;       // set DTACK to NAK
         end
     end

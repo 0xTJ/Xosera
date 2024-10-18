@@ -299,7 +299,7 @@ localparam [31:0]   githash     = 32'H`GITHASH;             // git short hash
 
 localparam [16*8-1:0] hex_str = "FEDCBA9876543210";
 /* verilator lint_off LITENDIAN */  // NOTE: This keeps the letters in forward order for humans
-localparam [0:99*8-1] info_str = { "Xosera v", "0" + 8'(version[11:8]), ".", "0" + 8'(version[7:4]), "0" + 8'(version[3:0]),
+localparam [0:94*8-1] info_str = { "Xosera v", "0" + 8'(version[11:8]), ".", "0" + 8'(version[7:4]), "0" + 8'(version[3:0]),
                                 " ",
                                 hex_str[((builddate[31:28])*8)+:8], hex_str[((builddate[27:24])*8)+:8],
                                 hex_str[((builddate[23:20])*8)+:8], hex_str[((builddate[19:16])*8)+:8],
@@ -365,7 +365,7 @@ localparam [0:99*8-1] info_str = { "Xosera v", "0" + 8'(version[11:8]), ".", "0"
 `ifndef EN_UART
                                 8'd0,8'd0,8'd0,8'd0,8'd0,
 `endif
-`ifdef EN_DTACK
+`ifndef EN_DTACK
                                 8'd0,8'd0,8'd0,8'd0,8'd0,
 `endif
 `ifndef EN_AUDIO

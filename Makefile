@@ -176,7 +176,7 @@ m68kclean:
 	cd xosera_test_m68k && $(MAKE) clean
 	cd xosera_uart_m68k && $(MAKE) clean
 	cd xosera_vramtest_m68k && $(MAKE) clean
-	cd copper/copper_test_m68k $(MAKE) clean
+	cd copper/copper_test_m68k && $(MAKE) clean
 	cd copper/crop_test_m68k && $(MAKE) clean
 	cd copper/splitscreen_test_m68k && $(MAKE) clean
 

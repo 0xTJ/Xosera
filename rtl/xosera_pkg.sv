@@ -35,8 +35,10 @@
 //
 // set by Makefile: `define EN_PF_B                         // enable PF B (2nd overlay playfield)
 // set by Makefile: `define EN_AUDIO                4       // number of channels 2/4
+// set by Makefile: `define EN_DTACK                        // enable FPGA DTACK signal
 //`undef EN_PF_B
 //`undef EN_AUDIO
+//`undef EN_DTACK                        
 `define EN_BLIT                         // enable blit unit
 `define EN_POINTER                      // enable pointer sprite
 `define EN_PIXEL_ADDR                   // pixel coordinate address generation
@@ -53,7 +55,6 @@
   `endif
   `define EN_COPPER_INIT                  // enable copper init program at reset (optional)
 `endif
-`define EN_DTACK                        // enable FPGA DTACK signal
 `ifndef EN_DTACK                        // only enable UART if no DTACK (uses TX signal)
 //`define EN_UART                         // enable USB UART
 `ifdef EN_UART

@@ -57,6 +57,7 @@ MAX_CPUS ?= 8
 VIDEO_MODE ?= MODE_640x480
 AUDIO?=4
 PF_B?=true
+EN_DTACK ?= false
 
 # copper assembly
 ifeq (,$(shell xosera-copasm -h >/dev/null 2>&1))
@@ -112,6 +113,10 @@ endif
 
 ifneq ($(strip $(AUDIO)),0)
 VERILOG_DEFS += -DEN_AUDIO=$(AUDIO)
+endif
+
+ifneq ($(strip $(EN_DTACK)),false)
+VERILOG_DEFS += -DEN_DTACK
 endif
 
 # RTL source and include directory

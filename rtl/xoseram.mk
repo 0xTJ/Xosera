@@ -105,6 +105,11 @@ VERILOG_DEFS += -DEN_AUDIO=$(AUDIO)
 OUTSUFFIX := $(OUTSUFFIX_REV)_aud$(AUDIO)_$(subst MODE_,,$(VIDEO_MODE))
 endif
 
+EN_DTACK ?= true
+ifneq ($(strip $(EN_DTACK)),false)
+VERILOG_DEFS += -DEN_DTACK
+endif
+
 FONTFILES := $(wildcard tilesets/*.mem)
 
 # RTL source and include directory

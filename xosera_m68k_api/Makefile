@@ -26,7 +26,7 @@ all: prereq $(COPASM) $(LIBRARY) $(BINARY) $(DISASM)
 
 prereq:
 	@echo === Building xosera-copasm COPPER assembler...
-	cd ../copper/CopAsm/ && $(MAKE)
+	cd ../copper/CopAsm/ && $(MAKE) && cd -
 	@mkdir -p bin
 	cp -v ../copper/CopAsm/bin/xosera-copasm $(COPASM)
 	@echo === Installed xosera-copasm to "$(COPASM)"
